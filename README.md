@@ -18,6 +18,7 @@ This repository does not include OpenAI binaries, `app.asar`, extracted applicat
 - Local project sidebar menu gets **Change project folder** / **프로젝트 경로 변경**.
 - When a project folder was moved, the app can retarget existing chats to the new folder path instead of treating the old path as permanently missing.
 - `browser-use` is configured to trust the patched app's bundled browser client when `node_repl` is launched from the patched copy.
+- Stale Codex app tool cache entries for **Full Access MCP** are removed so they cannot be selected instead of the default `browser-use` flow.
 - Electron ASAR integrity in `Codex.exe` can be updated after repacking `app.asar`.
 
 ## Important Notes
@@ -147,6 +148,7 @@ For `browser-use`:
 2. Start a local thread in the patched app.
 3. Ask Codex to open or inspect a local page with browser-use.
 4. The `iab` backend should connect through the patched app's bundled browser client.
+5. If the tool list still mentions Full Access MCP after installing or repairing, fully close Codex and start a new session so the app tool cache is reloaded.
 
 ## Restore
 
@@ -200,6 +202,16 @@ Check `%USERPROFILE%\.codex\backups` first. The retarget action backs up `state_
 ### `browser-use` says no Codex IAB backends were discovered
 
 Run `.\install_windows.ps1 -RepairBrowserUseOnly`, then fully close and reopen the patched app. This rewrites `%USERPROFILE%\.codex\config.toml` so `node_repl` trusts the browser-use client shipped inside `%LOCALAPPDATA%\OpenAI\CodexPatched\app`.
+
+### Codex keeps using Full Access MCP instead of browser-use
+
+Run:
+
+```powershell
+.\install_windows.ps1 -RepairBrowserUseOnly
+```
+
+The installer always removes cached tool metadata entries whose connector is `Full Access MCP` or whose namespace is `mcp__codex_apps__full_access_mcp`. These entries are cache metadata only, so the installer removes them directly instead of preserving another copy of the same connector metadata.
 
 ## Security
 
