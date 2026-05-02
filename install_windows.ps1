@@ -77,12 +77,106 @@ function Invoke-Npx {
     }
 }
 
+function ConvertTo-TomlLiteral {
+    param([string]$Value)
+
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
+function Get-OptionalBrowserUseRoot {
+    param([string]$Root)
+
+    if ((Test-Path (Join-Path $Root "scripts\browser-client.mjs")) -and
+        (Test-Path (Join-Path $Root "skills\browser\SKILL.md"))) {
+        return [IO.Path]::GetFullPath($Root)
+    }
+
+    return $null
+}
+
+function Get-BrowserClientSha256 {
+    param([string]$BrowserUseRoot)
+
+    $client = Join-Path $BrowserUseRoot "scripts\browser-client.mjs"
+    if (-not (Test-Path $client)) {
+        return $null
+    }
+
+    return (Get-FileHash -Algorithm SHA256 $client).Hash.ToLowerInvariant()
+}
+
+function Update-CodexNodeReplBrowserUseConfig {
+    param([string]$PatchedApp)
+
+    $userProfile = [Environment]::GetFolderPath("UserProfile")
+    $codexDir = Join-Path $userProfile ".codex"
+    $configPath = Join-Path $codexDir "config.toml"
+    $nodeReplExe = Join-Path $PatchedApp "resources\node_repl.exe"
+    $bundledBrowserUseRoot = Get-OptionalBrowserUseRoot (Join-Path $PatchedApp "resources\plugins\openai-bundled\plugins\browser-use")
+    $cacheBrowserUseRoot = $null
+    $cacheRoot = Join-Path $codexDir "plugins\cache\openai-bundled\browser-use"
+
+    if (Test-Path $cacheRoot) {
+        $cacheBrowserUseRoot = Get-ChildItem $cacheRoot -Directory -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending |
+            ForEach-Object { Get-OptionalBrowserUseRoot $_.FullName } |
+            Where-Object { $_ } |
+            Select-Object -First 1
+    }
+
+    $trustedRoots = @($bundledBrowserUseRoot, $cacheBrowserUseRoot) |
+        Where-Object { $_ } |
+        Select-Object -Unique
+    $trustedHashes = $trustedRoots |
+        ForEach-Object { Get-BrowserClientSha256 $_ } |
+        Where-Object { $_ } |
+        Select-Object -Unique
+
+    if (-not (Test-Path $nodeReplExe)) {
+        throw "Cannot find patched node_repl.exe at $nodeReplExe"
+    }
+    if ($trustedRoots.Count -eq 0 -or $trustedHashes.Count -eq 0) {
+        throw "Cannot find a browser-use browser-client.mjs to trust for node_repl."
+    }
+
+    New-Item -ItemType Directory -Force $codexDir | Out-Null
+
+    $envTable = "env = { NODE_REPL_TRUSTED_CODE_PATHS = " +
+        (ConvertTo-TomlLiteral ($trustedRoots -join [IO.Path]::PathSeparator)) +
+        ", NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = " +
+        (ConvertTo-TomlLiteral ($trustedHashes -join " ")) + " }"
+    $section = @(
+        "[mcp_servers.node_repl]",
+        "command = $(ConvertTo-TomlLiteral $nodeReplExe)",
+        $envTable,
+        ""
+    ) -join [Environment]::NewLine
+
+    $text = if (Test-Path $configPath) {
+        Get-Content -Raw -Encoding UTF8 $configPath
+    } else {
+        ""
+    }
+
+    $pattern = "(?ms)^\[mcp_servers\.node_repl\]\r?\n.*?(?=^\[|\z)"
+    if ($text -match $pattern) {
+        $text = [regex]::Replace($text, $pattern, $section)
+    } else {
+        if ($text.Length -gt 0 -and -not $text.EndsWith([Environment]::NewLine)) {
+            $text += [Environment]::NewLine
+        }
+        $text += [Environment]::NewLine + $section
+    }
+
+    Set-Content -Encoding UTF8 -NoNewline -Path $configPath -Value $text
+}
+
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$patchScript = Join-Path $repoRoot "codex_goal_patch.py"
+$patchScript = Join-Path $repoRoot "codex_desktop_patch.py"
 $localAppData = [Environment]::GetFolderPath("LocalApplicationData")
-$targetRoot = Join-Path $localAppData "OpenAI\CodexGoalPatched"
+$targetRoot = Join-Path $localAppData "OpenAI\CodexPatched"
 $targetApp = Join-Path $targetRoot "app"
-$extractDir = Join-Path ([IO.Path]::GetTempPath()) "codex-goal-patch-app-asar"
+$extractDir = Join-Path ([IO.Path]::GetTempPath()) "codex-desktop-patch-app-asar"
 
 $sourceCandidates = if ($SourceApp) {
     @($SourceApp)
@@ -90,6 +184,7 @@ $sourceCandidates = if ($SourceApp) {
     @(
         (Join-Path $localAppData "OpenAI\Codex\app"),
         (Join-Path $localAppData "Programs\Codex"),
+        (Join-Path $localAppData "OpenAI\CodexGoalPatched\app"),
         $targetApp
     )
 }
@@ -106,7 +201,7 @@ foreach ($candidate in $sourceCandidates) {
 }
 
 if (-not (Test-Path $patchScript)) {
-    throw "Cannot find codex_goal_patch.py next to this installer."
+    throw "Cannot find codex_desktop_patch.py next to this installer."
 }
 
 if (-not $sourceApp) {
@@ -134,7 +229,7 @@ if ((Test-Path $targetApp) -and -not $Force) {
 New-Item -ItemType Directory -Force $targetRoot | Out-Null
 
 if ($patchInPlace) {
-    Write-Step "Patching existing CodexGoalPatched app in place"
+    Write-Step "Patching existing CodexPatched app in place"
 } else {
     Write-Step "Copying Codex app to a separate patched folder"
     if (Test-Path $targetApp) {
@@ -146,8 +241,8 @@ if ($patchInPlace) {
 $targetAsar = Join-Path $targetApp "resources\app.asar"
 $targetExe = Join-Path $targetApp "Codex.exe"
 $backupStamp = Get-Date -Format "yyyyMMdd-HHmmss"
-Copy-Item $targetAsar "$targetAsar.original-goalpatch-$backupStamp" -Force
-Copy-Item $targetExe "$targetExe.original-goalpatch-$backupStamp" -Force
+Copy-Item $targetAsar "$targetAsar.original-codexpatch-$backupStamp" -Force
+Copy-Item $targetExe "$targetExe.original-codexpatch-$backupStamp" -Force
 
 Write-Step "Extracting app.asar"
 Remove-Item -Recurse -Force $extractDir -ErrorAction SilentlyContinue
@@ -161,6 +256,9 @@ Invoke-Npx @("--yes", "@electron/asar", "pack", $extractDir, $targetAsar)
 
 Write-Step "Updating Electron ASAR integrity"
 Invoke-Python $python @($patchScript, "--fix-integrity", $targetApp)
+
+Write-Step "Configuring browser-use for patched node_repl"
+Update-CodexNodeReplBrowserUseConfig $targetApp
 
 Write-Step "Cleaning temporary files"
 Remove-Item -Recurse -Force $extractDir -ErrorAction SilentlyContinue

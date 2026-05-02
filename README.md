@@ -5,9 +5,9 @@
 <img width="761" height="202" alt="image" src="https://github.com/user-attachments/assets/0c4b3d38-d3fd-41f3-b37a-e894f6469e71" />
 
 
-# Codex Goal Patch
+# Codex Desktop Patch
 
-Unofficial local patch for the Codex desktop app. It adds a `/goal` slash command path, replaces an existing thread goal before setting a new one, and adds a project path retarget action for moved local folders.
+Unofficial local patch bundle for the Codex desktop app. It fixes the `/goal` workflow, adds a project path retarget action for moved local folders, and configures the bundled `browser-use` path used by the patched app.
 
 This repository does not include OpenAI binaries, `app.asar`, extracted application files, user profiles, tokens, or cache files. Users apply the patch to their own local Codex installation at their own risk.
 
@@ -17,6 +17,7 @@ This repository does not include OpenAI binaries, `app.asar`, extracted applicat
 - Setting a new goal first clears the previous thread goal, so a completed or stale goal does not block the next one.
 - Local project sidebar menu gets **Change project folder** / **프로젝트 경로 변경**.
 - When a project folder was moved, the app can retarget existing chats to the new folder path instead of treating the old path as permanently missing.
+- `browser-use` is configured to trust the patched app's bundled browser client when `node_repl` is launched from the patched copy.
 - Electron ASAR integrity in `Codex.exe` can be updated after repacking `app.asar`.
 
 ## Important Notes
@@ -60,7 +61,7 @@ If your Codex app is installed in a nonstandard folder:
 The installer creates a separate patched copy at:
 
 ```text
-%LOCALAPPDATA%\OpenAI\CodexGoalPatched\app\Codex.exe
+%LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe
 ```
 
 ## Recommended Layout
@@ -68,7 +69,7 @@ The installer creates a separate patched copy at:
 The commands below create a separate patched app copy:
 
 - Original app: `%LOCALAPPDATA%\OpenAI\Codex\app`
-- Patched copy: `%LOCALAPPDATA%\OpenAI\CodexGoalPatched\app`
+- Patched copy: `%LOCALAPPDATA%\OpenAI\CodexPatched\app`
 
 Close Codex before patching. The easy installer above does these steps automatically. The manual commands below are kept for troubleshooting.
 
@@ -78,37 +79,37 @@ Run PowerShell from this repository directory.
 
 ```powershell
 $src = "$env:LOCALAPPDATA\OpenAI\Codex\app"
-$dstRoot = "$env:LOCALAPPDATA\OpenAI\CodexGoalPatched"
+$dstRoot = "$env:LOCALAPPDATA\OpenAI\CodexPatched"
 $dst = "$dstRoot\app"
-$extract = "$env:TEMP\codex-goal-patch-app-asar"
+$extract = "$env:TEMP\codex-desktop-patch-app-asar"
 
 New-Item -ItemType Directory -Force $dstRoot | Out-Null
 Copy-Item -Recurse -Force $src $dst
 
-Copy-Item "$dst\resources\app.asar" "$dst\resources\app.asar.original-goalpatch"
-Copy-Item "$dst\Codex.exe" "$dst\Codex.exe.original-goalpatch"
+Copy-Item "$dst\resources\app.asar" "$dst\resources\app.asar.original-codexpatch"
+Copy-Item "$dst\Codex.exe" "$dst\Codex.exe.original-codexpatch"
 
 Remove-Item -Recurse -Force $extract -ErrorAction SilentlyContinue
 npx --yes @electron/asar extract "$dst\resources\app.asar" $extract
 
-py -3 .\codex_goal_patch.py $extract
+py -3 .\codex_desktop_patch.py $extract
 
 npx --yes @electron/asar pack $extract "$dst\resources\app.asar"
 
-py -3 .\codex_goal_patch.py --fix-integrity $dst
+py -3 .\codex_desktop_patch.py --fix-integrity $dst
 ```
 
 If `py -3` is not available, use `python`:
 
 ```powershell
-python .\codex_goal_patch.py $extract
-python .\codex_goal_patch.py --fix-integrity $dst
+python .\codex_desktop_patch.py $extract
+python .\codex_desktop_patch.py --fix-integrity $dst
 ```
 
 ## Run
 
 ```powershell
-& "$env:LOCALAPPDATA\OpenAI\CodexGoalPatched\app\Codex.exe"
+& "$env:LOCALAPPDATA\OpenAI\CodexPatched\app\Codex.exe"
 ```
 
 If the official Codex app is already running, close it first. Electron may forward launches to the already-running instance.
@@ -131,24 +132,31 @@ For moved project folders:
 4. Select the folder's new location.
 5. The patch updates the sidebar project path, matching local thread cwd values, and session metadata. A backup is written under `%USERPROFILE%\.codex\backups\cwd-retarget-*`.
 
+For `browser-use`:
+
+1. Launch the patched Codex copy.
+2. Start a local thread in the patched app.
+3. Ask Codex to open or inspect a local page with browser-use.
+4. The `iab` backend should connect through the patched app's bundled browser client.
+
 ## Restore
 
 Close Codex, then restore the backed-up files. The easy installer writes timestamped backups next to the patched files:
 
 ```text
-%LOCALAPPDATA%\OpenAI\CodexGoalPatched\app\Codex.exe.original-goalpatch-*
-%LOCALAPPDATA%\OpenAI\CodexGoalPatched\app\resources\app.asar.original-goalpatch-*
+%LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe.original-codexpatch-*
+%LOCALAPPDATA%\OpenAI\CodexPatched\app\resources\app.asar.original-codexpatch-*
 ```
 
 For manual installs using the commands above, restore the fixed backup names:
 
 ```powershell
-$dst = "$env:LOCALAPPDATA\OpenAI\CodexGoalPatched\app"
-Copy-Item "$dst\resources\app.asar.original-goalpatch" "$dst\resources\app.asar" -Force
-Copy-Item "$dst\Codex.exe.original-goalpatch" "$dst\Codex.exe" -Force
+$dst = "$env:LOCALAPPDATA\OpenAI\CodexPatched\app"
+Copy-Item "$dst\resources\app.asar.original-codexpatch" "$dst\resources\app.asar" -Force
+Copy-Item "$dst\Codex.exe.original-codexpatch" "$dst\Codex.exe" -Force
 ```
 
-Or delete `%LOCALAPPDATA%\OpenAI\CodexGoalPatched` and keep using the official Codex install.
+Or delete `%LOCALAPPDATA%\OpenAI\CodexPatched` and keep using the official Codex install.
 
 ## Troubleshooting
 
@@ -161,7 +169,7 @@ The Codex desktop app bundle changed. Do not force the patch. Update the script 
 Run:
 
 ```powershell
-py -3 .\codex_goal_patch.py --fix-integrity "$env:LOCALAPPDATA\OpenAI\CodexGoalPatched\app"
+py -3 .\codex_desktop_patch.py --fix-integrity "$env:LOCALAPPDATA\OpenAI\CodexPatched\app"
 ```
 
 ### `/goal` does not appear
@@ -169,7 +177,7 @@ py -3 .\codex_goal_patch.py --fix-integrity "$env:LOCALAPPDATA\OpenAI\CodexGoalP
 Make sure you launched the patched copy, not the official app. Close all Codex processes and launch:
 
 ```powershell
-& "$env:LOCALAPPDATA\OpenAI\CodexGoalPatched\app\Codex.exe"
+& "$env:LOCALAPPDATA\OpenAI\CodexPatched\app\Codex.exe"
 ```
 
 ### Project path change does not appear
@@ -180,6 +188,10 @@ Make sure you launched the patched copy. The project path action only appears fo
 
 Check `%USERPROFILE%\.codex\backups` first. The retarget action backs up `state_5.sqlite`, its WAL/SHM sidecars when present, `.codex-global-state.json`, and affected rollout JSONL files before writing changes.
 
+### `browser-use` says no Codex IAB backends were discovered
+
+Rerun the installer with `-Force`, then fully close and reopen the patched app. The installer rewrites `%USERPROFILE%\.codex\config.toml` so `node_repl` trusts the browser-use client shipped inside `%LOCALAPPDATA%\OpenAI\CodexGoalPatched\app`.
+
 ## Security
 
-Review the script before running it. It edits local application files and updates the Electron ASAR integrity hash in the copied `Codex.exe`. The runtime project path action edits local Codex profile state for the selected moved project.
+Review the script before running it. It edits local application files, updates the Electron ASAR integrity hash in the copied `Codex.exe`, and updates local Codex config for the patched `node_repl`. The runtime project path action edits local Codex profile state for the selected moved project.

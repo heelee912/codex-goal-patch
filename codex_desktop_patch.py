@@ -259,9 +259,9 @@ def main() -> int:
 
     if len(sys.argv) != 2:
         print(
-            "usage: codex_goal_patch.py <extracted-app-asar-dir>\n"
-            "       codex_goal_patch.py --fix-integrity <electron-app-dir>\n"
-            "       codex_goal_patch.py --fix-integrity <codex-exe> <app-asar>",
+            "usage: codex_desktop_patch.py <extracted-app-asar-dir>\n"
+            "       codex_desktop_patch.py --fix-integrity <electron-app-dir>\n"
+            "       codex_desktop_patch.py --fix-integrity <codex-exe> <app-asar>",
             file=sys.stderr,
         )
         return 2
