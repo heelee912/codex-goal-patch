@@ -120,6 +120,96 @@ def patch_index(root: Path) -> bool:
     return True
 
 
+CWD_RETARGET_MAIN_METHODS = r"""__codexCwdNorm(e){return String(e??``).trim().replace(/^\\\\\?\\/,"").replace(/\//g,`\\`).replace(/\\+$/g,``).toLowerCase()}__codexCwdReplacement(e,t){return String(e??``).startsWith(`\\\\?\\`)?`\\\\?\\${t}`:t}__codexCwdStatePath(){return i.join(i.dirname(this.globalState.getStateFilePath()),`state_5.sqlite`)}__codexCwdSidecars(e){return[``, `-wal`, `-shm`].map(t=>`${e}${t}`).filter(e=>o.existsSync(e))}__codexCwdDatabase(){let e=require(`better-sqlite3`);return new e(this.__codexCwdStatePath())}__codexCwdLoadThreads(e){let t=this.__codexCwdDatabase();try{return t.prepare(`select id,cwd,rollout_path,title from threads`).all().filter(t=>this.__codexCwdNorm(t.cwd)===this.__codexCwdNorm(e))}finally{t.close()}}__codexCwdUpdateThreads(e,t){let n=this.__codexCwdDatabase();try{let r=n.prepare(`update threads set cwd = ? where id = ? and cwd = ?`),i=n.transaction(()=>{for(let n of e)r.run(this.__codexCwdReplacement(n.cwd,t),n.id,n.cwd)});i()}finally{n.close()}}__codexCwdBackup(e){let t=i.dirname(this.globalState.getStateFilePath()),n=i.join(t,`backups`,`cwd-retarget-${Date.now()}`);o.mkdirSync(n,{recursive:!0});let r=[...this.__codexCwdSidecars(this.__codexCwdStatePath()),this.globalState.getStateFilePath(),...e.map(e=>String(e.rollout_path??``).replace(/^\\\\\?\\/,""))];for(let e of r){if(!e||!o.existsSync(e))continue;try{if(!o.statSync(e).isFile())continue;let t=e.replace(/^[A-Za-z]:[\\/]/,e=>`${e[0]}__/`).replace(/[<>:"|?*]/g,`_`).replace(/[\\/]+/g,`__`);o.copyFileSync(e,i.join(n,t))}catch(e){X().warning(`Failed to back up cwd retarget file`,{safe:{},sensitive:{error:e}})}}return n}__codexCwdRewriteSessionFiles(e,t,n){let r=0;for(let a of e){let e=String(a.rollout_path??``).replace(/^\\\\\?\\/,"");if(!e||!o.existsSync(e))continue;let s=o.readFileSync(e,`utf8`),c=s.split(/(\r?\n)/),l=!1;for(let e=0;e<c.length;e+=2){let i=c[e];if(!i)continue;try{let a=JSON.parse(i),o=a?.payload?.cwd;typeof o==`string`&&this.__codexCwdNorm(o)===this.__codexCwdNorm(t)&&(a.payload.cwd=this.__codexCwdReplacement(o,n),c[e]=JSON.stringify(a),l=!0,r++)}catch{}}l&&o.writeFileSync(e,c.join(``),`utf8`)}return r}__codexCwdReplaceJson(e,t,n){if(typeof e==`string`)return this.__codexCwdNorm(e)===this.__codexCwdNorm(t)?{value:this.__codexCwdReplacement(e,n),changed:1}:{value:e,changed:0};if(Array.isArray(e)){let r=0,i=e.map(e=>{let a=this.__codexCwdReplaceJson(e,t,n);return r+=a.changed,a.value});return{value:i,changed:r}}if(e&&typeof e==`object`){let r=0,i={};for(let[a,o]of Object.entries(e)){let e=a;if(this.__codexCwdNorm(a)===this.__codexCwdNorm(t)&&(e=this.__codexCwdReplacement(a,n),r++),o!==void 0){let a=this.__codexCwdReplaceJson(o,t,n);r+=a.changed,i[e]=a.value}}return{value:i,changed:r}}return{value:e,changed:0}}__codexCwdRetargetGlobal(t,n){let r=0;for(let i of[e.Rt.WORKSPACE_ROOT_OPTIONS,e.Rt.ACTIVE_WORKSPACE_ROOTS,e.Rt.PROJECT_ORDER,e.Rt.PINNED_PROJECT_IDS,e.Rt.WORKSPACE_ROOT_LABELS,e.Rt.OPEN_IN_TARGET_PREFERENCES,e.Rt.SIDEBAR_PROJECT_THREAD_ORDERS,e.Rt.THREAD_WORKSPACE_ROOT_HINTS])this.globalState.update(i,e=>{let i=this.__codexCwdReplaceJson(e,t,n);return r+=i.changed,i.changed?i.value:e??void 0});return r}async __codexCwdRetargetWorkspaceRootOption(e,t){try{if(this.host.id!==`local`)return;let n=re(t,this.host),r=await this.pickLocalWorkspaceRoot();if(r==null||this.__codexCwdNorm(n)===this.__codexCwdNorm(r))return;let i=this.__codexCwdLoadThreads(n),a=this.__codexCwdBackup(i);this.__codexCwdUpdateThreads(i,r);let o=this.__codexCwdRewriteSessionFiles(i,n,r),s=this.__codexCwdRetargetGlobal(n,r);await this.globalState.flush?.(),e.send(H,{type:`workspace-root-options-updated`}),e.send(H,{type:`active-workspace-roots-updated`}),e.send(H,{type:`navigate-to-route`,path:`/`,state:{focusComposerNonce:Date.now()}}),X().info(`Retargeted workspace root`,{safe:{threadCount:i.length,sessionCwdCount:o,globalStateCount:s},sensitive:{oldRoot:n,newRoot:r,backup:a}})}catch(n){X().error(`Failed to retarget workspace root`,{safe:{},sensitive:{error:n,root:t}})}}"""
+
+
+def patch_cwd_main(root: Path) -> bool:
+    path = root / ".vite/build/main-j7E7jyI7.js"
+    text = path.read_text(encoding="utf-8")
+    changed = False
+
+    if "__codexCwdRetargetWorkspaceRootOption" not in text:
+        text = replace_once(
+            text,
+            "async addWorkspaceRootOption(e,n=!0,r){",
+            CWD_RETARGET_MAIN_METHODS + "async addWorkspaceRootOption(e,n=!0,r){",
+            "main cwd retarget methods",
+        )
+        changed = True
+
+    if "electron-retarget-workspace-root-option" not in text:
+        text = replace_once(
+            text,
+            "case`electron-add-new-workspace-root-option`:await this.addWorkspaceRootOption(r,!0,i.root);break;",
+            "case`electron-retarget-workspace-root-option`:await this.__codexCwdRetargetWorkspaceRootOption(r,i.root);break;"
+            "case`electron-add-new-workspace-root-option`:await this.addWorkspaceRootOption(r,!0,i.root);break;",
+            "main cwd retarget message",
+        )
+        changed = True
+
+    if changed:
+        path.write_text(text, encoding="utf-8")
+    return changed
+
+
+def patch_cwd_renderer(root: Path) -> bool:
+    path = find_asset(
+        root,
+        "index-*.js",
+        "sidebarElectron.removeWorkspaceRootOption",
+        "renderer index asset",
+    )
+    text = path.read_text(encoding="utf-8")
+    if "sidebarElectron.retargetWorkspaceRootOption" in text:
+        return False
+
+    text = replace_once(
+        text,
+        "let _e;t[46]!==o||t[47]!==ee?",
+        "let __codexCwdRetarget=()=>{d(!1),J.dispatchMessage(`electron-retarget-workspace-root-option`,{root:n})},"
+        "__codexCwdRetargetItem=(0,$.jsx)(ml.Item,{LeftIcon:Qt,onSelect:__codexCwdRetarget,"
+        "children:(0,$.jsx)(Y,{id:`sidebarElectron.retargetWorkspaceRootOption`,"
+        "defaultMessage:`Change project folder`,description:`Menu item to choose a new filesystem path for a moved local project`})});"
+        "let _e;t[46]!==o||t[47]!==ee?",
+        "renderer cwd retarget menu item",
+    )
+    text = replace_once(
+        text,
+        "children:[me,ge,_e,be,we,De]",
+        "children:[me,ge,__codexCwdRetargetItem,_e,be,we,De]",
+        "renderer cwd retarget menu placement",
+    )
+
+    path.write_text(text, encoding="utf-8")
+    return True
+
+
+def patch_cwd_locale(root: Path) -> bool:
+    path = find_asset(
+        root,
+        "ko-KR-*.js",
+        "sidebarElectron.removeWorkspaceRootOption",
+        "Korean locale asset",
+    )
+    text = path.read_text(encoding="utf-8")
+    if "sidebarElectron.retargetWorkspaceRootOption" in text:
+        return False
+
+    text = replace_once(
+        text,
+        '"sidebarElectron.removeWorkspaceRootOption":`제거하기`,',
+        '"sidebarElectron.removeWorkspaceRootOption":`제거하기`,'
+        '"sidebarElectron.retargetWorkspaceRootOption":`프로젝트 경로 변경`,',
+        "Korean cwd retarget label",
+    )
+    path.write_text(text, encoding="utf-8")
+    return True
+
+
+def patch_cwd_retarget(root: Path) -> bool:
+    return patch_cwd_main(root) | patch_cwd_renderer(root) | patch_cwd_locale(root)
+
+
 def asar_header_hash(path: Path) -> str:
     with path.open("rb") as f:
         header = f.read(16)
@@ -176,8 +266,8 @@ def main() -> int:
         )
         return 2
     root = Path(sys.argv[1]).resolve()
-    changed = patch_composer(root) | patch_index(root)
-    print("patched /goal command and set-thread-goal app action" if changed else "goal patch already applied")
+    changed = patch_composer(root) | patch_index(root) | patch_cwd_retarget(root)
+    print("patched /goal and project cwd retarget support" if changed else "goal/cwd patch already applied")
     return 0
 
 

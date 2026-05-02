@@ -7,7 +7,7 @@
 
 # Codex Goal Patch
 
-Unofficial local patch for the Codex desktop app. It adds a `/goal` slash command path and replaces an existing thread goal before setting a new one.
+Unofficial local patch for the Codex desktop app. It adds a `/goal` slash command path, replaces an existing thread goal before setting a new one, and adds a project path retarget action for moved local folders.
 
 This repository does not include OpenAI binaries, `app.asar`, extracted application files, user profiles, tokens, or cache files. Users apply the patch to their own local Codex installation at their own risk.
 
@@ -15,6 +15,8 @@ This repository does not include OpenAI binaries, `app.asar`, extracted applicat
 
 - `/goal <objective>` can be entered from the composer.
 - Setting a new goal first clears the previous thread goal, so a completed or stale goal does not block the next one.
+- Local project sidebar menu gets **Change project folder** / **프로젝트 경로 변경**.
+- When a project folder was moved, the app can retarget existing chats to the new folder path instead of treating the old path as permanently missing.
 - Electron ASAR integrity in `Codex.exe` can be updated after repacking `app.asar`.
 
 ## Important Notes
@@ -47,6 +49,12 @@ If you already installed a patched copy and want to replace it:
 
 ```powershell
 .\install_windows.ps1 -Force
+```
+
+If your Codex app is installed in a nonstandard folder:
+
+```powershell
+.\install_windows.ps1 -SourceApp "C:\Path\To\Codex\app"
 ```
 
 The installer creates a separate patched copy at:
@@ -107,7 +115,7 @@ If the official Codex app is already running, close it first. Electron may forwa
 
 ## Verify
 
-In a local Codex thread:
+For `/goal`, in a local Codex thread:
 
 1. Type `/goal test goal one`.
 2. Confirm the app reports that the goal was set.
@@ -115,9 +123,24 @@ In a local Codex thread:
 4. Type `/goal test goal two`.
 5. The second goal should replace the previous one instead of failing because a goal already exists.
 
+For moved project folders:
+
+1. Launch the patched Codex copy.
+2. Right-click a local project in the sidebar.
+3. Click **Change project folder** or **프로젝트 경로 변경**.
+4. Select the folder's new location.
+5. The patch updates the sidebar project path, matching local thread cwd values, and session metadata. A backup is written under `%USERPROFILE%\.codex\backups\cwd-retarget-*`.
+
 ## Restore
 
-Close Codex, then restore the backed-up files:
+Close Codex, then restore the backed-up files. The easy installer writes timestamped backups next to the patched files:
+
+```text
+%LOCALAPPDATA%\OpenAI\CodexGoalPatched\app\Codex.exe.original-goalpatch-*
+%LOCALAPPDATA%\OpenAI\CodexGoalPatched\app\resources\app.asar.original-goalpatch-*
+```
+
+For manual installs using the commands above, restore the fixed backup names:
 
 ```powershell
 $dst = "$env:LOCALAPPDATA\OpenAI\CodexGoalPatched\app"
@@ -149,6 +172,14 @@ Make sure you launched the patched copy, not the official app. Close all Codex p
 & "$env:LOCALAPPDATA\OpenAI\CodexGoalPatched\app\Codex.exe"
 ```
 
+### Project path change does not appear
+
+Make sure you launched the patched copy. The project path action only appears for local workspace projects in the project action menu.
+
+### Project path change fails
+
+Check `%USERPROFILE%\.codex\backups` first. The retarget action backs up `state_5.sqlite`, its WAL/SHM sidecars when present, `.codex-global-state.json`, and affected rollout JSONL files before writing changes.
+
 ## Security
 
-Review the script before running it. It edits local application files and updates the Electron ASAR integrity hash in the copied `Codex.exe`.
+Review the script before running it. It edits local application files and updates the Electron ASAR integrity hash in the copied `Codex.exe`. The runtime project path action edits local Codex profile state for the selected moved project.
