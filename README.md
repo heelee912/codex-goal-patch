@@ -36,7 +36,7 @@ The screenshots show the four important behaviors this patch is meant to provide
 
 
 
-```The **Goal set** toast confirms that the goal was applied.```
+```The "Goal set" toast confirms that the goal was applied.```
 
 
 
