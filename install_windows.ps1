@@ -210,10 +210,13 @@ function Add-CodexRegistryCandidates {
 function Add-CodexAppxCandidates {
     param([System.Collections.Generic.List[string]]$Candidates)
 
-    $packages = @(Get-AppxPackage -Name "OpenAI.Codex" -ErrorAction SilentlyContinue)
-    if ($packages.Count -eq 0) {
-        $packages = @(Get-AppxPackage -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -match "Codex" -or $_.PackageFamilyName -match "Codex" })
+    $packages = @()
+    if (Get-Command Get-AppxPackage -ErrorAction SilentlyContinue) {
+        $packages = @(Get-AppxPackage -Name "OpenAI.Codex" -ErrorAction SilentlyContinue)
+        if ($packages.Count -eq 0) {
+            $packages = @(Get-AppxPackage -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -match "Codex" -or $_.PackageFamilyName -match "Codex" })
+        }
     }
 
     foreach ($package in $packages) {

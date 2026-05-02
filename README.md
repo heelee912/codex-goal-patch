@@ -52,7 +52,15 @@ After installing, use:
 %LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe
 ```
 
-It is normal if `%LOCALAPPDATA%\OpenAI` does not exist before running the installer. The installer creates `%LOCALAPPDATA%\OpenAI\CodexPatched` for the patched copy. Some official Codex installs live under `%LOCALAPPDATA%\Programs\Codex` instead.
+It is normal if `%LOCALAPPDATA%\OpenAI` does not exist before running the installer. The installer creates `%LOCALAPPDATA%\OpenAI\CodexPatched` for the patched copy.
+
+Some official Codex installs live under `%LOCALAPPDATA%\Programs\Codex`. Store/AppX installs can also live under a versioned WindowsApps path such as:
+
+```text
+C:\Program Files\WindowsApps\OpenAI.Codex_26.429.3425.0_x64__2p2nqsd0c76g0\app\Codex.exe
+```
+
+The installer checks these locations automatically. If auto-detection fails, pass the full `Codex.exe` path with `-SourceApp`.
 
 You can tell non-technical users this:
 
@@ -69,6 +77,9 @@ When it finishes, launch:
 
 Use /goal your goal text in a Codex chat to set or replace the thread goal.
 If you moved a project folder, right-click that project in the sidebar and choose Change project folder / 프로젝트 경로 변경. Select the new folder location. This keeps the chat history and retargets the cwd/workspace path Codex uses.
+
+If the installer cannot find Codex, find the official Codex.exe path and run the installer again with -SourceApp. For Store/AppX installs the path may look like:
+.\install_windows.ps1 -SourceApp "C:\Program Files\WindowsApps\OpenAI.Codex_26.429.3425.0_x64__2p2nqsd0c76g0\app\Codex.exe"
 ```
 
 If a patched copy already exists, run:
@@ -145,7 +156,7 @@ The installer auto-detects common Codex desktop install locations, including:
 C:\Program Files\WindowsApps\OpenAI.Codex_*\app
 ```
 
-It also checks Codex-looking folders under `%LOCALAPPDATA%\Programs`, `%LOCALAPPDATA%\OpenAI`, Program Files, Windows uninstall registry entries, and AppX/MSIX package installs such as `OpenAI.Codex`.
+It also checks Codex-looking folders under `%LOCALAPPDATA%\Programs`, `%LOCALAPPDATA%\OpenAI`, Program Files, Windows uninstall registry entries, and AppX/MSIX package installs such as `OpenAI.Codex`. If `Get-AppxPackage` is unavailable, the installer still tries the direct WindowsApps folder pattern.
 
 The patched copy is always created at:
 
@@ -350,13 +361,33 @@ If Codex is installed from an AppX/MSIX package, the path can look like:
 C:\Program Files\WindowsApps\OpenAI.Codex_26.429.3425.0_x64__2p2nqsd0c76g0\app\Codex.exe
 ```
 
-That full `Codex.exe` path is valid for `-SourceApp`.
+That full `Codex.exe` path is valid for `-SourceApp`:
+
+```powershell
+.\install_windows.ps1 -SourceApp "C:\Program Files\WindowsApps\OpenAI.Codex_26.429.3425.0_x64__2p2nqsd0c76g0\app\Codex.exe"
+```
 
 ### `browser-use` says no Codex IAB backends were discovered
 
 Run `.\install_windows.ps1 -RepairBrowserUseOnly`, then fully close and reopen the patched app. This rewrites `%USERPROFILE%\.codex\config.toml` so `node_repl` trusts the browser-use client shipped inside `%LOCALAPPDATA%\OpenAI\CodexPatched\app`.
 
 Current versions of this patch also include a desktop-app IAB route fallback. If you still see the same error after reinstalling with `.\install_windows.ps1 -Force`, verify that you launched `%LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe`, not the official unpatched app.
+
+### `browser-use` says no browser route was captured
+
+If `setupAtlasRuntime({ backend: "iab" })` succeeds but opening a tab fails with an error like this:
+
+```text
+No Codex browser route captured for browser session ... turn ...
+```
+
+Install the latest patch with:
+
+```powershell
+.\install_windows.ps1 -Force
+```
+
+Then fully close Codex and launch the patched app again. This version adds an IAB route fallback that can use the registered conversation/window route when Codex missed the per-turn browser route capture.
 
 ## Security
 
