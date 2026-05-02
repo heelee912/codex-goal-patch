@@ -5,7 +5,8 @@ param(
     [switch]$Force,
     [switch]$Launch,
     [string]$SourceApp,
-    [switch]$RepairBrowserUseOnly
+    [switch]$RepairBrowserUseOnly,
+    [switch]$PurgeFullAccessMcp
 )
 
 Set-StrictMode -Version Latest
@@ -318,12 +319,14 @@ if (-not (Test-Path $patchScript)) {
     throw "Cannot find codex_desktop_patch.py next to this installer."
 }
 
-Write-Step "Purging Full Access MCP from Codex app tool cache"
-$removedFullAccessMcpTools = Remove-FullAccessMcpToolCache
-if ($removedFullAccessMcpTools -eq 0) {
-    Write-Host "No Full Access MCP cache entries were found."
-} else {
-    Write-Host "Removed $removedFullAccessMcpTools Full Access MCP cache entries." -ForegroundColor Green
+if ($PurgeFullAccessMcp) {
+    Write-Step "Purging Full Access MCP from Codex app tool cache"
+    $removedFullAccessMcpTools = Remove-FullAccessMcpToolCache
+    if ($removedFullAccessMcpTools -eq 0) {
+        Write-Host "No Full Access MCP cache entries were found."
+    } else {
+        Write-Host "Removed $removedFullAccessMcpTools Full Access MCP cache entries." -ForegroundColor Green
+    }
 }
 
 if ($RepairBrowserUseOnly) {
