@@ -102,7 +102,7 @@ To install and launch the patched app in one step:
 - When a project folder was moved, the app can retarget existing chats to the new folder path instead of treating the old path as permanently missing.
 - Existing chats keep their session history while their saved `cwd` is updated to the new folder.
 - `browser-use` is configured to trust the patched app's bundled browser client when `node_repl` is launched from the patched copy.
-- `browser-use` IAB route lookup can fall back to the registered conversation/window route when the app missed a per-turn route capture.
+- `browser-use` can recover the registered conversation/window route when the app missed a per-turn IAB route capture.
 - Electron ASAR integrity in `Codex.exe` can be updated after repacking `app.asar`.
 
 ## About `cwd` and Moved Folders
@@ -294,7 +294,7 @@ For `browser-use`:
 2. Start a local thread in the patched app.
 3. Ask Codex to open or inspect a local page with browser-use.
 4. The `iab` backend should connect through the patched app's bundled browser client.
-5. If the app missed a per-turn IAB route capture, the patched app should still use the registered route for the same conversation/window instead of failing with `No Codex IAB backends were discovered`.
+5. If the app missed a per-turn IAB route capture, the patched app should recover the registered route for the same conversation/window instead of failing with a route capture error.
 
 ## Restore
 
@@ -371,7 +371,7 @@ That full `Codex.exe` path is valid for `-SourceApp`:
 
 Run `.\install_windows.ps1 -RepairBrowserUseOnly`, then fully close and reopen the patched app. This rewrites `%USERPROFILE%\.codex\config.toml` so `node_repl` trusts the browser-use client shipped inside `%LOCALAPPDATA%\OpenAI\CodexPatched\app`.
 
-Current versions of this patch also include a desktop-app IAB route fallback. If you still see the same error after reinstalling with `.\install_windows.ps1 -Force`, verify that you launched `%LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe`, not the official unpatched app.
+Current versions of this patch also include desktop-app IAB route recovery for cases where Codex has already registered a browser route for the same conversation. If you still see the same error after reinstalling with `.\install_windows.ps1 -Force`, verify that you launched `%LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe`, not the official unpatched app.
 
 ### `browser-use` says no browser route was captured
 
@@ -387,7 +387,7 @@ Install the latest patch with:
 .\install_windows.ps1 -Force
 ```
 
-Then fully close Codex and launch the patched app again. This version adds an IAB route fallback that can use the registered conversation/window route when Codex missed the per-turn browser route capture.
+Then fully close Codex and launch the patched app again. This version can recover the registered conversation/window route when Codex missed the per-turn browser route capture.
 
 ## Security
 
