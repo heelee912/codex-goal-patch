@@ -23,6 +23,31 @@ This repository does not include OpenAI binaries, `app.asar`, extracted applicat
 - Python 3.11 or newer.
 - Node.js/npm for `npx @electron/asar`.
 
+## Easy Install
+
+1. Click **Code** -> **Download ZIP** on this GitHub repository.
+2. Extract the ZIP.
+3. Close Codex completely.
+4. Open PowerShell in the extracted folder.
+5. Run:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\install_windows.ps1
+```
+
+If you already installed a patched copy and want to replace it:
+
+```powershell
+.\install_windows.ps1 -Force
+```
+
+The installer creates a separate patched copy at:
+
+```text
+%LOCALAPPDATA%\OpenAI\CodexGoalPatched\app\Codex.exe
+```
+
 ## Recommended Layout
 
 The commands below create a separate patched app copy:
@@ -30,9 +55,9 @@ The commands below create a separate patched app copy:
 - Original app: `%LOCALAPPDATA%\OpenAI\Codex\app`
 - Patched copy: `%LOCALAPPDATA%\OpenAI\CodexGoalPatched\app`
 
-Close Codex before patching.
+Close Codex before patching. The easy installer above does these steps automatically. The manual commands below are kept for troubleshooting.
 
-## Install
+## Manual Install
 
 Run PowerShell from this repository directory.
 
