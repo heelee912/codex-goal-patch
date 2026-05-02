@@ -13,7 +13,7 @@ The screenshots show the four important behaviors this patch is meant to provide
 3. **`/goal` slash command**: typing `/goal` in the composer opens the Goal slash command entry.
 4. **Goal set confirmation**: after submitting `/goal <objective>`, the app shows **Goal set**, confirming that the thread goal was accepted.
 
-<img width="761" height="202" alt="Chat showing cwd changed after project path retarget" src="https://github.com/user-attachments/assets/0c4b3d38-d3fd-41f3-b37a-e894f6469e71" />
+<img width="761" height="578" alt="image" src="https://github.com/user-attachments/assets/1c6bf9d3-2675-4923-9512-6e2b4e311bbd" />
 
 The chat output shows that the active `cwd` changes after retargeting the project path.
 
