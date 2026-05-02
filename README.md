@@ -1,6 +1,6 @@
 # Codex Desktop Patch
 
-Unofficial local patch bundle for the Codex desktop app. It fixes the `/goal` workflow, adds a project path retarget action for moved local folders, and configures the bundled `browser-use` path used by the patched app.
+Unofficial local patch bundle for the Codex desktop app. It fixes the `/goal` workflow, adds a project path retarget action for moved local folders, and repairs common patched-app `browser-use` wiring issues.
 
 This repository does not include OpenAI binaries, `app.asar`, extracted application files, user profiles, tokens, or cache files. Users apply the patch to their own local Codex installation at their own risk.
 
@@ -42,7 +42,7 @@ The screenshots show the four important behaviors this patch is meant to provide
 
 ## Plain User Guide
 
-This is a Windows-only patch installer for people who already have the Codex desktop app installed.
+This is a Windows-only patch installer for people who already have the Codex desktop app installed. It is tested on Windows 11, and should also work on Windows systems that use the same Codex desktop app layout.
 
 It does not give you a modified Codex installer. Instead, it copies your own local Codex app into a separate folder, patches that copy, and leaves the original app installed.
 
@@ -51,6 +51,8 @@ After installing, use:
 ```text
 %LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe
 ```
+
+It is normal if `%LOCALAPPDATA%\OpenAI` does not exist before running the installer. The installer creates `%LOCALAPPDATA%\OpenAI\CodexPatched` for the patched copy. Some official Codex installs live under `%LOCALAPPDATA%\Programs\Codex` instead.
 
 You can tell non-technical users this:
 
@@ -89,6 +91,7 @@ To install and launch the patched app in one step:
 - When a project folder was moved, the app can retarget existing chats to the new folder path instead of treating the old path as permanently missing.
 - Existing chats keep their session history while their saved `cwd` is updated to the new folder.
 - `browser-use` is configured to trust the patched app's bundled browser client when `node_repl` is launched from the patched copy.
+- `browser-use` IAB route lookup can fall back to the registered conversation/window route when the app missed a per-turn route capture.
 - Electron ASAR integrity in `Codex.exe` can be updated after repacking `app.asar`.
 
 ## About `cwd` and Moved Folders
@@ -131,6 +134,19 @@ Before writing changes, it creates a backup under:
 - Windows Codex desktop app installed.
 - Python 3.11 or newer.
 - Node.js/npm for `npx @electron/asar`.
+
+The official Codex app may be installed in either of these common locations:
+
+```text
+%LOCALAPPDATA%\OpenAI\Codex\app
+%LOCALAPPDATA%\Programs\Codex
+```
+
+The patched copy is always created at:
+
+```text
+%LOCALAPPDATA%\OpenAI\CodexPatched\app
+```
 
 ## Easy Install
 
@@ -256,6 +272,7 @@ For `browser-use`:
 2. Start a local thread in the patched app.
 3. Ask Codex to open or inspect a local page with browser-use.
 4. The `iab` backend should connect through the patched app's bundled browser client.
+5. If the app missed a per-turn IAB route capture, the patched app should still use the registered route for the same conversation/window instead of failing with `No Codex IAB backends were discovered`.
 
 ## Restore
 
@@ -306,9 +323,21 @@ Make sure you launched the patched copy. The project path action only appears fo
 
 Check `%USERPROFILE%\.codex\backups` first. The retarget action backs up `state_5.sqlite`, its WAL/SHM sidecars when present, `.codex-global-state.json`, and affected rollout JSONL files before writing changes.
 
+### `%LOCALAPPDATA%\OpenAI` does not exist
+
+That can be normal before installation. The installer creates `%LOCALAPPDATA%\OpenAI\CodexPatched` for the patched app copy.
+
+If the installer says it cannot find Codex, the official app is probably installed somewhere else or only the Codex CLI is installed. Find the folder that contains both `Codex.exe` and `resources\app.asar`, then run:
+
+```powershell
+.\install_windows.ps1 -SourceApp "C:\Path\To\Codex\app"
+```
+
 ### `browser-use` says no Codex IAB backends were discovered
 
 Run `.\install_windows.ps1 -RepairBrowserUseOnly`, then fully close and reopen the patched app. This rewrites `%USERPROFILE%\.codex\config.toml` so `node_repl` trusts the browser-use client shipped inside `%LOCALAPPDATA%\OpenAI\CodexPatched\app`.
+
+Current versions of this patch also include a desktop-app IAB route fallback. If you still see the same error after reinstalling with `.\install_windows.ps1 -Force`, verify that you launched `%LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe`, not the official unpatched app.
 
 ## Security
 

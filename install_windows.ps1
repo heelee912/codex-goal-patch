@@ -248,7 +248,8 @@ if ($RepairBrowserUseOnly) {
 }
 
 if (-not $sourceApp) {
-    throw "Cannot find a Codex desktop app directory. Install Codex desktop first, or rerun with -SourceApp <path-to-app-folder>."
+    $candidateList = ($sourceCandidates | ForEach-Object { "  $_" }) -join [Environment]::NewLine
+    throw "Cannot find a Codex desktop app directory. Install Codex desktop first, or rerun with -SourceApp <path-to-app-folder>. Checked:$([Environment]::NewLine)$candidateList"
 }
 
 $runningCodex = Get-Process -Name Codex,codex -ErrorAction SilentlyContinue |
@@ -270,6 +271,10 @@ if ((Test-Path $targetApp) -and -not $Force) {
 }
 
 New-Item -ItemType Directory -Force $targetRoot | Out-Null
+
+Write-Step "Using Codex app paths"
+Write-Host "Source app:  $sourceApp"
+Write-Host "Patched app: $targetApp"
 
 if ($patchInPlace) {
     Write-Step "Patching existing CodexPatched app in place"

@@ -210,6 +210,50 @@ def patch_cwd_retarget(root: Path) -> bool:
     return patch_cwd_main(root) | patch_cwd_renderer(root) | patch_cwd_locale(root)
 
 
+def patch_browser_use_iab_route_fallback(root: Path) -> bool:
+    path = root / ".vite/build/main-j7E7jyI7.js"
+    text = path.read_text(encoding="utf-8")
+    changed = False
+
+    old = (
+        "resolveBrowserRoute(e){let t=this.turnRoutes.get(JC(e));if(t==null)throw J().warning(`IAB_LIFECYCLE missing browser use turn route`,"
+        "{safe:e,sensitive:{}}),Error(`No Codex browser route captured for browser session ${e.conversationId} turn ${e.turnId}`);"
+        "let n={conversationId:t.conversationId,windowId:t.windowId};return this.assertWindowAlive(n),"
+        "J().info(`IAB_LIFECYCLE resolved browser use route`,{safe:{conversationId:t.conversationId,"
+        "ownerWebContentsId:t.ownerWebContentsId,turnId:t.turnId,windowId:t.windowId},sensitive:{}}),n}"
+    )
+    new = (
+        "resolveBrowserRoute(e){let t=this.turnRoutes.get(JC(e));if(t==null){if(this.options.browserRoute!=null&&"
+        "e.conversationId===this.options.browserRoute.conversationId){let t=this.options.browserRoute;return this.assertWindowAlive(t),"
+        "J().warning(`IAB_LIFECYCLE resolved browser use route from conversation fallback`,{safe:{conversationId:t.conversationId,"
+        "turnId:e.turnId,windowId:t.windowId},sensitive:{}}),t}throw J().warning(`IAB_LIFECYCLE missing browser use turn route`,"
+        "{safe:e,sensitive:{}}),Error(`No Codex browser route captured for browser session ${e.conversationId} turn ${e.turnId}`)}"
+        "let n={conversationId:t.conversationId,windowId:t.windowId};return this.assertWindowAlive(n),"
+        "J().info(`IAB_LIFECYCLE resolved browser use route`,{safe:{conversationId:t.conversationId,"
+        "ownerWebContentsId:t.ownerWebContentsId,turnId:t.turnId,windowId:t.windowId},sensitive:{}}),n}"
+    )
+    if "resolved browser use route from conversation fallback" not in text:
+        text = replace_once(text, old, new, "browser-use IAB route fallback")
+        changed = True
+
+    old = (
+        "canServeTurnForBrowserRoute(e,t){let n=this.turnRoutes.get(JC(e));return n==null||"
+        "this.delegate?.isWindowAlive(n.windowId)!==!0?!1:n.conversationId===t.conversationId&&n.windowId===t.windowId}"
+    )
+    new = (
+        "canServeTurnForBrowserRoute(e,t){let n=this.turnRoutes.get(JC(e));return n==null?"
+        "e.conversationId===t.conversationId&&this.delegate?.isWindowAlive(t.windowId)===!0:"
+        "this.delegate?.isWindowAlive(n.windowId)!==!0?!1:n.conversationId===t.conversationId&&n.windowId===t.windowId}"
+    )
+    if "e.conversationId===t.conversationId&&this.delegate?.isWindowAlive(t.windowId)===!0" not in text:
+        text = replace_once(text, old, new, "browser-use IAB canServe fallback")
+        changed = True
+
+    if changed:
+        path.write_text(text, encoding="utf-8")
+    return changed
+
+
 def asar_header_hash(path: Path) -> str:
     with path.open("rb") as f:
         header = f.read(16)
@@ -266,8 +310,13 @@ def main() -> int:
         )
         return 2
     root = Path(sys.argv[1]).resolve()
-    changed = patch_composer(root) | patch_index(root) | patch_cwd_retarget(root)
-    print("patched /goal and project cwd retarget support" if changed else "goal/cwd patch already applied")
+    changed = (
+        patch_composer(root)
+        | patch_index(root)
+        | patch_cwd_retarget(root)
+        | patch_browser_use_iab_route_fallback(root)
+    )
+    print("patched Codex desktop goal/cwd/browser-use support" if changed else "Codex desktop patch already applied")
     return 0
 
 
