@@ -58,6 +58,12 @@ If your Codex app is installed in a nonstandard folder:
 .\install_windows.ps1 -SourceApp "C:\Path\To\Codex\app"
 ```
 
+If the app is already patched but `browser-use` still points at an old app copy:
+
+```powershell
+.\install_windows.ps1 -RepairBrowserUseOnly
+```
+
 The installer creates a separate patched copy at:
 
 ```text
@@ -190,7 +196,7 @@ Check `%USERPROFILE%\.codex\backups` first. The retarget action backs up `state_
 
 ### `browser-use` says no Codex IAB backends were discovered
 
-Rerun the installer with `-Force`, then fully close and reopen the patched app. The installer rewrites `%USERPROFILE%\.codex\config.toml` so `node_repl` trusts the browser-use client shipped inside `%LOCALAPPDATA%\OpenAI\CodexGoalPatched\app`.
+Run `.\install_windows.ps1 -RepairBrowserUseOnly`, then fully close and reopen the patched app. This rewrites `%USERPROFILE%\.codex\config.toml` so `node_repl` trusts the browser-use client shipped inside `%LOCALAPPDATA%\OpenAI\CodexPatched\app`.
 
 ## Security
 

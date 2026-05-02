@@ -4,7 +4,8 @@
 param(
     [switch]$Force,
     [switch]$Launch,
-    [string]$SourceApp
+    [string]$SourceApp,
+    [switch]$RepairBrowserUseOnly
 )
 
 Set-StrictMode -Version Latest
@@ -124,13 +125,13 @@ function Update-CodexNodeReplBrowserUseConfig {
             Select-Object -First 1
     }
 
-    $trustedRoots = @($bundledBrowserUseRoot, $cacheBrowserUseRoot) |
+    $trustedRoots = @(@($bundledBrowserUseRoot, $cacheBrowserUseRoot) |
         Where-Object { $_ } |
-        Select-Object -Unique
-    $trustedHashes = $trustedRoots |
+        Select-Object -Unique)
+    $trustedHashes = @($trustedRoots |
         ForEach-Object { Get-BrowserClientSha256 $_ } |
         Where-Object { $_ } |
-        Select-Object -Unique
+        Select-Object -Unique)
 
     if (-not (Test-Path $nodeReplExe)) {
         throw "Cannot find patched node_repl.exe at $nodeReplExe"
@@ -168,7 +169,8 @@ function Update-CodexNodeReplBrowserUseConfig {
         $text += [Environment]::NewLine + $section
     }
 
-    Set-Content -Encoding UTF8 -NoNewline -Path $configPath -Value $text
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($configPath, $text, $utf8NoBom)
 }
 
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -189,6 +191,28 @@ $sourceCandidates = if ($SourceApp) {
     )
 }
 
+$repairCandidates = if ($SourceApp) {
+    @($SourceApp)
+} else {
+    @(
+        $targetApp,
+        (Join-Path $localAppData "OpenAI\CodexGoalPatched\app"),
+        (Join-Path $localAppData "Programs\Codex"),
+        (Join-Path $localAppData "OpenAI\Codex\app")
+    )
+}
+
+$repairApp = $null
+foreach ($candidate in $repairCandidates) {
+    if (
+        (Test-Path (Join-Path $candidate "resources\node_repl.exe")) -and
+        (Test-Path (Join-Path $candidate "resources\plugins\openai-bundled\plugins\browser-use\scripts\browser-client.mjs"))
+    ) {
+        $repairApp = [IO.Path]::GetFullPath($candidate)
+        break
+    }
+}
+
 $sourceApp = $null
 foreach ($candidate in $sourceCandidates) {
     if (
@@ -202,6 +226,21 @@ foreach ($candidate in $sourceCandidates) {
 
 if (-not (Test-Path $patchScript)) {
     throw "Cannot find codex_desktop_patch.py next to this installer."
+}
+
+if ($RepairBrowserUseOnly) {
+    if (-not $repairApp) {
+        throw "Cannot find a Codex app with resources\node_repl.exe and bundled browser-use. Rerun with -SourceApp <path-to-app-folder>."
+    }
+
+    Write-Step "Repairing browser-use node_repl configuration"
+    Update-CodexNodeReplBrowserUseConfig $repairApp
+    Write-Host ""
+    Write-Host "Done. browser-use node_repl config now points at:" -ForegroundColor Green
+    Write-Host "  $(Join-Path $repairApp "resources\node_repl.exe")"
+    Write-Host ""
+    Write-Host "Fully close and reopen Codex for this config to be picked up."
+    exit 0
 }
 
 if (-not $sourceApp) {
