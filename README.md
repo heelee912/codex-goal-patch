@@ -103,6 +103,8 @@ py -3 .\codex_desktop_patch.py $extract
 npx --yes @electron/asar pack $extract "$dst\resources\app.asar"
 
 py -3 .\codex_desktop_patch.py --fix-integrity $dst
+
+.\install_windows.ps1 -RepairBrowserUseOnly -SourceApp $dst
 ```
 
 If `py -3` is not available, use `python`:
@@ -110,6 +112,7 @@ If `py -3` is not available, use `python`:
 ```powershell
 python .\codex_desktop_patch.py $extract
 python .\codex_desktop_patch.py --fix-integrity $dst
+.\install_windows.ps1 -RepairBrowserUseOnly -SourceApp $dst
 ```
 
 ## Run
