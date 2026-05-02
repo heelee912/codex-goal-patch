@@ -20,7 +20,7 @@ The screenshots show the four important behaviors this patch is meant to provide
 
 
 
-The chat output shows that the active `cwd` changes after retargeting the project path.
+```The chat output shows that the active `cwd` changes after retargeting the project path.```
 
 
 
@@ -28,7 +28,7 @@ The chat output shows that the active `cwd` changes after retargeting the projec
 
 
 
-The composer recognizes `/goal` as a slash command.
+```The composer recognizes `/goal` as a slash command.```
 
 
 
@@ -36,7 +36,7 @@ The composer recognizes `/goal` as a slash command.
 
 
 
-The **Goal set** toast confirms that the goal was applied.
+```The **Goal set** toast confirms that the goal was applied.```
 
 
 
