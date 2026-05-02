@@ -110,10 +110,18 @@ function Update-CodexNodeReplBrowserUseConfig {
     param([string]$PatchedApp)
 
     $userProfile = [Environment]::GetFolderPath("UserProfile")
+    $localAppData = [Environment]::GetFolderPath("LocalApplicationData")
     $codexDir = Join-Path $userProfile ".codex"
     $configPath = Join-Path $codexDir "config.toml"
     $nodeReplExe = Join-Path $PatchedApp "resources\node_repl.exe"
-    $bundledBrowserUseRoot = Get-OptionalBrowserUseRoot (Join-Path $PatchedApp "resources\plugins\openai-bundled\plugins\browser-use")
+    $bundledBrowserUseRoots = @(
+        (Join-Path $PatchedApp "resources\plugins\openai-bundled\plugins\browser-use"),
+        (Join-Path $localAppData "OpenAI\CodexPatched\app\resources\plugins\openai-bundled\plugins\browser-use"),
+        (Join-Path $localAppData "OpenAI\CodexGoalPatchedIntegrated\app\resources\plugins\openai-bundled\plugins\browser-use"),
+        (Join-Path $localAppData "OpenAI\CodexGoalPatched\app\resources\plugins\openai-bundled\plugins\browser-use"),
+        (Join-Path $localAppData "Programs\Codex\resources\plugins\openai-bundled\plugins\browser-use"),
+        (Join-Path $localAppData "OpenAI\Codex\app\resources\plugins\openai-bundled\plugins\browser-use")
+    ) | ForEach-Object { Get-OptionalBrowserUseRoot $_ } | Where-Object { $_ }
     $cacheBrowserUseRoot = $null
     $cacheRoot = Join-Path $codexDir "plugins\cache\openai-bundled\browser-use"
 
@@ -125,7 +133,7 @@ function Update-CodexNodeReplBrowserUseConfig {
             Select-Object -First 1
     }
 
-    $trustedRoots = @(@($bundledBrowserUseRoot, $cacheBrowserUseRoot) |
+    $trustedRoots = @(@($bundledBrowserUseRoots + @($cacheBrowserUseRoot)) |
         Where-Object { $_ } |
         Select-Object -Unique)
     $trustedHashes = @($trustedRoots |
