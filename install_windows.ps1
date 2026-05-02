@@ -117,8 +117,6 @@ function Update-CodexNodeReplBrowserUseConfig {
     $bundledBrowserUseRoots = @(
         (Join-Path $PatchedApp "resources\plugins\openai-bundled\plugins\browser-use"),
         (Join-Path $localAppData "OpenAI\CodexPatched\app\resources\plugins\openai-bundled\plugins\browser-use"),
-        (Join-Path $localAppData "OpenAI\CodexGoalPatchedIntegrated\app\resources\plugins\openai-bundled\plugins\browser-use"),
-        (Join-Path $localAppData "OpenAI\CodexGoalPatched\app\resources\plugins\openai-bundled\plugins\browser-use"),
         (Join-Path $localAppData "Programs\Codex\resources\plugins\openai-bundled\plugins\browser-use"),
         (Join-Path $localAppData "OpenAI\Codex\app\resources\plugins\openai-bundled\plugins\browser-use")
     ) | ForEach-Object { Get-OptionalBrowserUseRoot $_ } | Where-Object { $_ }
@@ -194,7 +192,6 @@ $sourceCandidates = if ($SourceApp) {
     @(
         (Join-Path $localAppData "OpenAI\Codex\app"),
         (Join-Path $localAppData "Programs\Codex"),
-        (Join-Path $localAppData "OpenAI\CodexGoalPatched\app"),
         $targetApp
     )
 }
@@ -204,7 +201,6 @@ $repairCandidates = if ($SourceApp) {
 } else {
     @(
         $targetApp,
-        (Join-Path $localAppData "OpenAI\CodexGoalPatched\app"),
         (Join-Path $localAppData "Programs\Codex"),
         (Join-Path $localAppData "OpenAI\Codex\app")
     )
