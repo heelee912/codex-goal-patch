@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+
+# Never publish OpenAI app binaries, extracted bundles, user profiles, logs, or caches.
+Codex.exe
+*.asar
+*.asar.*
+app/
+resources/
+.codex/
+auth.json
+logs_*.sqlite*
+state_*.sqlite*
+cache/
+sessions/
+backups/
+
+# Local scratch directories.
+tmp/
+dist/
+*.tmp
