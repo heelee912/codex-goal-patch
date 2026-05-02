@@ -39,21 +39,54 @@ def patch_composer(root: Path) -> bool:
     changed = False
 
     old = "function cU(e){let t=/^\\s*\\/side(?:\\s+([\\s\\S]*?))?\\s*$/.exec(e);return t==null?null:t[1]?.trim()??``}"
-    new = old + (
+    goal_helpers = (
         "function __codexGoalParse(e){let t=/^\\s*\\/goal(?:\\s+([\\s\\S]*?))?\\s*$/.exec(e);"
         "return t==null?null:t[1]?.trim()??``}"
-        "function __CodexGoalSlashCommand(){let e=(0,$.c)(17),t=Ci(Lv),n=t?.type===`local`?t.localConversationId:null,"
-        "r=Ne(),i=Xo(),a;e[0]===i?a=e[1]:(a=i.formatMessage({id:`composer.goalSlashCommand.title`,"
-        "defaultMessage:`Goal`,description:`Title for the goal slash command`}),e[0]=i,e[1]=a);"
-        "let o;e[2]===i?o=e[3]:(o=i.formatMessage({id:`composer.goalSlashCommand.description`,"
-        "defaultMessage:`Set this thread's goal`,description:`Description for the goal slash command`}),e[2]=i,e[3]=o);"
-        "let s=n!=null,c,l;e[4]===r?(c=e[5],l=e[6]):(c=async()=>{r.setText(`/goal `),r.focus()},l=[r],e[4]=r,e[5]=c,e[6]=l);"
-        "let u;return e[7]!==a||e[8]!==o||e[9]!==s||e[10]!==c||e[11]!==l?"
-        "(u={id:`goal`,title:a,description:o,requiresEmptyComposer:!1,Icon:Kf,enabled:s,onSelect:c,dependencies:l},"
-        "e[7]=a,e[8]=o,e[9]=s,e[10]=c,e[11]=l,e[12]=u):u=e[12],rx(u),null}"
+        "function __codexGoalPendingKey(){return`codexDesktopPatch.pendingGoal`}"
+        "function __codexGoalNormCwd(e){return String(e??``).trim().replace(/^\\\\\\\\\\?\\\\/,``).replace(/\\//g,`\\\\`).replace(/\\\\+$/g,``).toLowerCase()}"
+        "function __codexGoalSetPending(e,t){try{window.localStorage?.setItem(__codexGoalPendingKey(),JSON.stringify({objective:e,cwd:t??null,ts:Date.now()}))}catch{}}"
+        "async function __codexGoalApplyPending(e,t){try{let n=__codexGoalPendingKey(),r=window.localStorage?.getItem(n);"
+        "if(r==null)return!1;let i=JSON.parse(r),a=String(i?.objective??``).trim();if(!a)return window.localStorage?.removeItem(n),!1;"
+        "if(Number.isFinite(i?.ts)&&Date.now()-i.ts>864e5)return window.localStorage?.removeItem(n),!1;"
+        "if(i?.cwd&&t&&__codexGoalNormCwd(i.cwd)!==__codexGoalNormCwd(t))return!1;window.localStorage?.removeItem(n);"
+        "await ya(`set-thread-goal`,{conversationId:e,objective:a,status:`active`,tokenBudget:null});return!0}catch(e){throw e}}"
+        "function __CodexGoalSlashCommand({composerMode:e,resolvedCwd:t}={}){let n=(0,$.c)(20),r=Ci(Lv),i=r?.type===`local`?r.localConversationId:null,"
+        "a=Ne(),o=Xo(),s;n[0]===o?s=n[1]:(s=o.formatMessage({id:`composer.goalSlashCommand.title`,"
+        "defaultMessage:`Goal`,description:`Title for the goal slash command`}),n[0]=o,n[1]=s);"
+        "let c;n[2]===o?c=n[3]:(c=o.formatMessage({id:`composer.goalSlashCommand.description`,"
+        "defaultMessage:`Set this thread's goal`,description:`Description for the goal slash command`}),n[2]=o,n[3]=c);"
+        "let l=i!=null||e===`local`,u,d;n[4]===a?(u=n[5],d=n[6]):(u=async()=>{a.setText(`/goal `),a.focus()},d=[a],n[4]=a,n[5]=u,n[6]=d);"
+        "let f;return n[7]!==s||n[8]!==c||n[9]!==l||n[10]!==u||n[11]!==d||n[12]!==e||n[13]!==t?"
+        "(f={id:`goal`,title:s,description:c,requiresEmptyComposer:!1,Icon:Kf,enabled:l,onSelect:u,dependencies:[...d,e,t]},"
+        "n[7]=s,n[8]=c,n[9]=l,n[10]=u,n[11]=d,n[12]=e,n[13]=t,n[14]=f):f=n[14],rx(f),null}"
     )
+    new = old + goal_helpers
     if "__codexGoalParse" not in text:
         text = replace_once(text, old, new, "composer goal command insertion")
+        changed = True
+    elif "__codexGoalPendingKey" not in text:
+        old_goal_helpers = (
+            "function __codexGoalParse(e){let t=/^\\s*\\/goal(?:\\s+([\\s\\S]*?))?\\s*$/.exec(e);"
+            "return t==null?null:t[1]?.trim()??``}"
+            "function __CodexGoalSlashCommand(){let e=(0,$.c)(17),t=Ci(Lv),n=t?.type===`local`?t.localConversationId:null,"
+            "r=Ne(),i=Xo(),a;e[0]===i?a=e[1]:(a=i.formatMessage({id:`composer.goalSlashCommand.title`,"
+            "defaultMessage:`Goal`,description:`Title for the goal slash command`}),e[0]=i,e[1]=a);"
+            "let o;e[2]===i?o=e[3]:(o=i.formatMessage({id:`composer.goalSlashCommand.description`,"
+            "defaultMessage:`Set this thread's goal`,description:`Description for the goal slash command`}),e[2]=i,e[3]=o);"
+            "let s=n!=null,c,l;e[4]===r?(c=e[5],l=e[6]):(c=async()=>{r.setText(`/goal `),r.focus()},l=[r],e[4]=r,e[5]=c,e[6]=l);"
+            "let u;return e[7]!==a||e[8]!==o||e[9]!==s||e[10]!==c||e[11]!==l?"
+            "(u={id:`goal`,title:a,description:o,requiresEmptyComposer:!1,Icon:Kf,enabled:s,onSelect:c,dependencies:l},"
+            "e[7]=a,e[8]=o,e[9]=s,e[10]=c,e[11]=l,e[12]=u):u=e[12],rx(u),null}"
+        )
+        text = replace_once(text, old_goal_helpers, goal_helpers, "composer goal home support upgrade")
+        changed = True
+    if "let f;n[7]!==s||n[8]!==c||n[9]!==l||n[10]!==u||n[11]!==d||n[12]!==e||n[13]!==t?" in text:
+        text = replace_once(
+            text,
+            "let f;n[7]!==s||n[8]!==c||n[9]!==l||n[10]!==u||n[11]!==d||n[12]!==e||n[13]!==t?",
+            "let f;return n[7]!==s||n[8]!==c||n[9]!==l||n[10]!==u||n[11]!==d||n[12]!==e||n[13]!==t?",
+            "composer goal command return upgrade",
+        )
         changed = True
 
     old = (
@@ -61,8 +94,9 @@ def patch_composer(root: Path) -> bool:
         "if(o!=null){Ln(i),Rn(),Pt(!0);try{await Jo(o)&&(Ro(),C?.())}catch(e){qo(e)}finally{Pt(!1),Di()}return}"
     )
     new = (
-        "let i=Mn.getText(),__goal=W&&n?.type===`local`?__codexGoalParse(i):null;"
+        "let i=Mn.getText(),__goal=W&&(n?.type===`local`||Jn===`local`)?__codexGoalParse(i):null;"
         "if(__goal!=null){Ln(i),Rn();if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
+        "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),Ro(),Di();return}"
         "Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
         "I.get(Il).success(`Goal set`),Ro(),C?.()}catch(e){$o(e)}finally{Pt(!1),Di()}return}"
         "let o=W&&n?.type===`local`?cU(i):null;"
@@ -70,6 +104,22 @@ def patch_composer(root: Path) -> bool:
     )
     if "ya(`set-thread-goal`" not in text:
         text = replace_once(text, old, new, "composer submit parser insertion")
+        changed = True
+    elif "Goal queued for next chat" not in text:
+        old_goal_submit = (
+            "let i=Mn.getText(),__goal=W&&n?.type===`local`?__codexGoalParse(i):null;"
+            "if(__goal!=null){Ln(i),Rn();if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
+            "Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
+            "I.get(Il).success(`Goal set`),Ro(),C?.()}catch(e){$o(e)}finally{Pt(!1),Di()}return}"
+        )
+        new_goal_submit = (
+            "let i=Mn.getText(),__goal=W&&(n?.type===`local`||Jn===`local`)?__codexGoalParse(i):null;"
+            "if(__goal!=null){Ln(i),Rn();if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
+            "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),Ro(),Di();return}"
+            "Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
+            "I.get(Il).success(`Goal set`),Ro(),C?.()}catch(e){$o(e)}finally{Pt(!1),Di()}return}"
+        )
+        text = replace_once(text, old_goal_submit, new_goal_submit, "composer goal submit home support")
         changed = True
 
     old = (
@@ -85,8 +135,30 @@ def patch_composer(root: Path) -> bool:
         "(0,Q.jsx)(__CodexGoalSlashCommand,{}),"
         "(0,Q.jsx)(sU,{enabled:Ko,onOpenSideChat:async()=>{try{await Jo(null)}catch(e){qo(e)}}}),"
     )
-    if "(0,Q.jsx)(__CodexGoalSlashCommand,{})" not in text:
+    if (
+        "(0,Q.jsx)(__CodexGoalSlashCommand,{})" not in text
+        and "(0,Q.jsx)(__CodexGoalSlashCommand,{composerMode:Jn,resolvedCwd:hr})" not in text
+    ):
         text = replace_once(text, old, new, "composer command component render insertion")
+        changed = True
+    elif "(0,Q.jsx)(__CodexGoalSlashCommand,{composerMode:Jn,resolvedCwd:hr})" not in text:
+        text = replace_once(
+            text,
+            "(0,Q.jsx)(__CodexGoalSlashCommand,{}),",
+            "(0,Q.jsx)(__CodexGoalSlashCommand,{composerMode:Jn,resolvedCwd:hr}),",
+            "composer goal command home props",
+        )
+        changed = True
+
+    if "__codexGoalApplyPending(p,u)" not in text:
+        text = replace_once(
+            text,
+            "p=await q({attachments:Ka([...f.attachments??[],...s]),baseParams:f,hostId:o});wI(D,p,G,d.config),Xu(K,p,o,d.agentMode),",
+            "p=await q({attachments:Ka([...f.attachments??[],...s]),baseParams:f,hostId:o});"
+            "try{await __codexGoalApplyPending(p,u)&&D.get(Il).success(`Goal set`)}catch(e){Ho.warning(`[Composer] failed to apply queued goal`,{safe:{},sensitive:{error:e}}),D.get(Il).danger(`Failed to set queued goal`)}"
+            "wI(D,p,G,d.config),Xu(K,p,o,d.agentMode),",
+            "composer apply pending goal after new conversation",
+        )
         changed = True
 
     if changed:

@@ -75,7 +75,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 When it finishes, launch:
 %LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe
 
-Use /goal your goal text in a Codex chat to set or replace the thread goal.
+Use /goal your goal text in a Codex chat to set or replace the thread goal. On the new-chat home screen, `/goal <objective>` queues that goal for the next local chat you start from the same project.
 If you moved a project folder, right-click that project in the sidebar and choose Change project folder / 프로젝트 경로 변경. Select the new folder location. This keeps the chat history and retargets the cwd/workspace path Codex uses.
 
 If the installer cannot find Codex, find the official Codex.exe path and run the installer again with -SourceApp. For Store/AppX installs the path may look like:
@@ -97,6 +97,7 @@ To install and launch the patched app in one step:
 ## What This Fixes
 
 - `/goal <objective>` can be entered from the composer.
+- `/goal <objective>` appears on the new-chat home composer. If no thread exists yet, the goal is queued and applied to the next local chat created from that project.
 - Setting a new goal first clears the previous thread goal, so a completed or stale goal does not block the next one.
 - Local project sidebar menu gets **Change project folder** / **프로젝트 경로 변경**.
 - When a project folder was moved, the app can retarget existing chats to the new folder path instead of treating the old path as permanently missing.
@@ -277,6 +278,14 @@ For `/goal`, in a local Codex thread:
 3. Complete or leave that goal.
 4. Type `/goal test goal two`.
 5. The second goal should replace the previous one instead of failing because a goal already exists.
+
+For `/goal` from the new-chat home screen:
+
+1. Select a local project.
+2. Type `/goal test goal from home`.
+3. Confirm the app queues the goal for the next chat.
+4. Send the first real task message in that project.
+5. Confirm the new chat starts and the queued goal is applied.
 
 For moved project folders:
 
