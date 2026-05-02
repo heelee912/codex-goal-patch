@@ -1,15 +1,29 @@
-<img width="778" height="180" alt="image" src="https://github.com/user-attachments/assets/a6694fed-78c3-49f3-b30d-82fa9cebc699" />
-
-<img width="321" height="99" alt="image" src="https://github.com/user-attachments/assets/14425395-0a7e-4e1a-b3d2-578b2e0c4b10" />
-
-<img width="761" height="202" alt="image" src="https://github.com/user-attachments/assets/0c4b3d38-d3fd-41f3-b37a-e894f6469e71" />
-
-
 # Codex Desktop Patch
 
 Unofficial local patch bundle for the Codex desktop app. It fixes the `/goal` workflow, adds a project path retarget action for moved local folders, and configures the bundled `browser-use` path used by the patched app.
 
 This repository does not include OpenAI binaries, `app.asar`, extracted application files, user profiles, tokens, or cache files. Users apply the patch to their own local Codex installation at their own risk.
+
+## Screenshots
+
+The screenshots show the four important behaviors this patch is meant to provide:
+
+1. **Project path menu**: the local project sidebar menu includes **Change project folder** / **프로젝트 경로 변경**. Use this when a project folder moved and you want existing chats to keep using the new `cwd`.
+2. **`cwd` retarget proof**: after using the project path action, the same chat reports a different current working directory, showing that the saved workspace path changed from the old folder to the new one.
+3. **`/goal` slash command**: typing `/goal` in the composer opens the Goal slash command entry.
+4. **Goal set confirmation**: after submitting `/goal <objective>`, the app shows **Goal set**, confirming that the thread goal was accepted.
+
+<img width="761" height="202" alt="Chat showing cwd changed after project path retarget" src="https://github.com/user-attachments/assets/0c4b3d38-d3fd-41f3-b37a-e894f6469e71" />
+
+The chat output shows that the active `cwd` changes after retargeting the project path.
+
+<img width="778" height="180" alt="Composer showing the /goal slash command" src="https://github.com/user-attachments/assets/a6694fed-78c3-49f3-b30d-82fa9cebc699" />
+
+The composer recognizes `/goal` as a slash command.
+
+<img width="321" height="99" alt="Goal set confirmation toast" src="https://github.com/user-attachments/assets/14425395-0a7e-4e1a-b3d2-578b2e0c4b10" />
+
+The **Goal set** toast confirms that the goal was applied.
 
 ## Plain User Guide
 
