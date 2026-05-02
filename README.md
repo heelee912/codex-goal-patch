@@ -388,7 +388,15 @@ Run:
 .\install_windows.ps1 -RepairBrowserUseOnly
 ```
 
-This rewrites `%USERPROFILE%\.codex\config.toml` so `node_repl` trusts the browser-use client shipped inside `%LOCALAPPDATA%\OpenAI\CodexPatched\app`, then stops stale `node_repl.exe` processes launched from the patched app. Retry browser-use after that. If the same error persists, fully close and reopen Codex.
+This rewrites `%USERPROFILE%\.codex\config.toml` so `node_repl` trusts the browser-use client shipped inside `%LOCALAPPDATA%\OpenAI\CodexPatched\app`. It does not stop running `node_repl.exe` processes by default, because doing that can interrupt active browser-use sessions.
+
+If you are sure no active session is relying on browser-use and you want to clean stale patched `node_repl.exe` processes too, run:
+
+```powershell
+.\install_windows.ps1 -RepairBrowserUseOnly -StopNodeRepl
+```
+
+Retry browser-use after that. If the same error persists, reset Node REPL or fully close and reopen Codex.
 
 Current versions of this patch also include desktop-app IAB route recovery for cases where Codex has already registered a browser route for the same conversation. If you still see the same error after reinstalling with `.\install_windows.ps1 -Force`, verify that you launched `%LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe`, not the official unpatched app.
 

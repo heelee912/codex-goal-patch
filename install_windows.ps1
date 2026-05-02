@@ -5,7 +5,8 @@ param(
     [switch]$Force,
     [switch]$Launch,
     [string]$SourceApp,
-    [switch]$RepairBrowserUseOnly
+    [switch]$RepairBrowserUseOnly,
+    [switch]$StopNodeRepl
 )
 
 Set-StrictMode -Version Latest
@@ -441,16 +442,19 @@ if ($RepairBrowserUseOnly) {
 
     Write-Step "Repairing browser-use node_repl configuration"
     Update-CodexNodeReplBrowserUseConfig $repairApp
-    $stoppedNodeReplCount = Stop-CodexPatchedNodeReplProcesses $repairApp
     Write-Host ""
     Write-Host "Done. browser-use node_repl config now points at:" -ForegroundColor Green
     Write-Host "  $(Join-Path $repairApp "resources\node_repl.exe")"
-    if ($stoppedNodeReplCount -gt 0) {
+    if ($StopNodeRepl) {
+        $stoppedNodeReplCount = Stop-CodexPatchedNodeReplProcesses $repairApp
         Write-Host ""
         Write-Host "Stopped stale patched node_repl process(es): $stoppedNodeReplCount"
+    } else {
+        Write-Host ""
+        Write-Host "No running node_repl process was stopped. Add -StopNodeRepl only when you are not relying on active browser-use sessions."
     }
     Write-Host ""
-    Write-Host "Retry browser-use. If the same error persists, fully close and reopen Codex."
+    Write-Host "Retry browser-use. If the same error persists, reset Node REPL or fully close and reopen Codex."
     exit 0
 }
 
