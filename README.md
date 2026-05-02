@@ -1,3 +1,10 @@
+<img width="778" height="180" alt="image" src="https://github.com/user-attachments/assets/a6694fed-78c3-49f3-b30d-82fa9cebc699" />
+
+<img width="321" height="99" alt="image" src="https://github.com/user-attachments/assets/14425395-0a7e-4e1a-b3d2-578b2e0c4b10" />
+
+<img width="761" height="202" alt="image" src="https://github.com/user-attachments/assets/0c4b3d38-d3fd-41f3-b37a-e894f6469e71" />
+
+
 # Codex Goal Patch
 
 Unofficial local patch for the Codex desktop app. It adds a `/goal` slash command path and replaces an existing thread goal before setting a new one.
