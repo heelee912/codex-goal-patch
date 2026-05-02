@@ -135,12 +135,17 @@ Before writing changes, it creates a backup under:
 - Python 3.11 or newer.
 - Node.js/npm for `npx @electron/asar`.
 
-The official Codex app may be installed in either of these common locations:
+The installer auto-detects common Codex desktop install locations, including:
 
 ```text
 %LOCALAPPDATA%\OpenAI\Codex\app
 %LOCALAPPDATA%\Programs\Codex
+%PROGRAMFILES%\Codex
+%PROGRAMFILES%\OpenAI\Codex
+C:\Program Files\WindowsApps\OpenAI.Codex_*\app
 ```
+
+It also checks Codex-looking folders under `%LOCALAPPDATA%\Programs`, `%LOCALAPPDATA%\OpenAI`, Program Files, Windows uninstall registry entries, and AppX/MSIX package installs such as `OpenAI.Codex`.
 
 The patched copy is always created at:
 
@@ -177,6 +182,12 @@ If your Codex app is installed in a nonstandard folder:
 
 ```powershell
 .\install_windows.ps1 -SourceApp "C:\Path\To\Codex\app"
+```
+
+`-SourceApp` may point at either the app folder, `Codex.exe`, or `resources\app.asar`:
+
+```powershell
+.\install_windows.ps1 -SourceApp "C:\Program Files\WindowsApps\OpenAI.Codex_26.429.3425.0_x64__2p2nqsd0c76g0\app\Codex.exe"
 ```
 
 If the app is already patched but `browser-use` still points at an old app copy:
@@ -332,6 +343,14 @@ If the installer says it cannot find Codex, the official app is probably install
 ```powershell
 .\install_windows.ps1 -SourceApp "C:\Path\To\Codex\app"
 ```
+
+If Codex is installed from an AppX/MSIX package, the path can look like:
+
+```text
+C:\Program Files\WindowsApps\OpenAI.Codex_26.429.3425.0_x64__2p2nqsd0c76g0\app\Codex.exe
+```
+
+That full `Codex.exe` path is valid for `-SourceApp`.
 
 ### `browser-use` says no Codex IAB backends were discovered
 

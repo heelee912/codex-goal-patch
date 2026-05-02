@@ -106,6 +106,202 @@ function Get-BrowserClientSha256 {
     return (Get-FileHash -Algorithm SHA256 $client).Hash.ToLowerInvariant()
 }
 
+function ConvertTo-CodexAppCandidate {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+
+    $expanded = [Environment]::ExpandEnvironmentVariables($Path.Trim().Trim('"'))
+    try {
+        $fullPath = [IO.Path]::GetFullPath($expanded)
+    } catch {
+        return $expanded
+    }
+
+    $leaf = Split-Path -Leaf $fullPath
+    if ($leaf -ieq "Codex.exe") {
+        return [IO.Path]::GetFullPath((Split-Path -Parent $fullPath))
+    }
+    if ($leaf -ieq "app.asar") {
+        $resourcesDir = Split-Path -Parent $fullPath
+        return [IO.Path]::GetFullPath((Split-Path -Parent $resourcesDir))
+    }
+
+    $nestedApp = Join-Path $fullPath "app"
+    if ((Test-Path (Join-Path $nestedApp "Codex.exe")) -and
+        (Test-Path (Join-Path $nestedApp "resources\app.asar"))) {
+        return [IO.Path]::GetFullPath($nestedApp)
+    }
+
+    return $fullPath
+}
+
+function Add-CodexAppCandidate {
+    param(
+        [System.Collections.Generic.List[string]]$Candidates,
+        [string]$Path
+    )
+
+    $candidate = ConvertTo-CodexAppCandidate $Path
+    if ([string]::IsNullOrWhiteSpace($candidate)) {
+        return
+    }
+
+    foreach ($existing in $Candidates) {
+        if ($existing -ieq $candidate) {
+            return
+        }
+    }
+
+    [void]$Candidates.Add($candidate)
+}
+
+function Add-CodexRegistryCandidates {
+    param([System.Collections.Generic.List[string]]$Candidates)
+
+    $roots = @(
+        "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall",
+        "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall",
+        "HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+    )
+
+    foreach ($root in $roots) {
+        if (-not (Test-Path $root)) {
+            continue
+        }
+
+        Get-ChildItem $root -ErrorAction SilentlyContinue | ForEach-Object {
+            $entry = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue
+            if (-not $entry) {
+                return
+            }
+
+            $displayNameProperty = $entry.PSObject.Properties["DisplayName"]
+            $displayName = if ($displayNameProperty) { [string]$displayNameProperty.Value } else { "" }
+            if ($displayName -notmatch "Codex") {
+                return
+            }
+
+            $installLocationProperty = $entry.PSObject.Properties["InstallLocation"]
+            if ($installLocationProperty) {
+                Add-CodexAppCandidate $Candidates $installLocationProperty.Value
+            }
+
+            $displayIconProperty = $entry.PSObject.Properties["DisplayIcon"]
+            $displayIcon = if ($displayIconProperty) { [string]$displayIconProperty.Value } else { "" }
+            if (-not [string]::IsNullOrWhiteSpace($displayIcon)) {
+                $iconPath = $displayIcon.Trim()
+                if ($iconPath.StartsWith('"')) {
+                    $endQuote = $iconPath.IndexOf('"', 1)
+                    if ($endQuote -gt 1) {
+                        $iconPath = $iconPath.Substring(1, $endQuote - 1)
+                    }
+                } else {
+                    $iconPath = ($iconPath -split ",")[0]
+                }
+                Add-CodexAppCandidate $Candidates $iconPath
+            }
+        }
+    }
+}
+
+function Add-CodexAppxCandidates {
+    param([System.Collections.Generic.List[string]]$Candidates)
+
+    $packages = @(Get-AppxPackage -Name "OpenAI.Codex" -ErrorAction SilentlyContinue)
+    if ($packages.Count -eq 0) {
+        $packages = @(Get-AppxPackage -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match "Codex" -or $_.PackageFamilyName -match "Codex" })
+    }
+
+    foreach ($package in $packages) {
+        $installLocationProperty = $package.PSObject.Properties["InstallLocation"]
+        if ($installLocationProperty) {
+            Add-CodexAppCandidate $Candidates $installLocationProperty.Value
+            Add-CodexAppCandidate $Candidates (Join-Path $installLocationProperty.Value "app")
+        }
+    }
+
+    $windowsApps = Join-Path ([Environment]::GetFolderPath("ProgramFiles")) "WindowsApps"
+    if (Test-Path $windowsApps) {
+        Get-ChildItem $windowsApps -Directory -Filter "OpenAI.Codex_*" -ErrorAction SilentlyContinue |
+            ForEach-Object {
+                Add-CodexAppCandidate $Candidates $_.FullName
+                Add-CodexAppCandidate $Candidates (Join-Path $_.FullName "app")
+            }
+    }
+}
+
+function Get-CodexAppCandidates {
+    param(
+        [string]$SourceApp,
+        [string]$TargetApp
+    )
+
+    $localAppData = [Environment]::GetFolderPath("LocalApplicationData")
+    $programFiles = [Environment]::GetFolderPath("ProgramFiles")
+    $programFilesX86 = ${env:ProgramFiles(x86)}
+    $candidates = New-Object "System.Collections.Generic.List[string]"
+
+    if ($SourceApp) {
+        Add-CodexAppCandidate $candidates $SourceApp
+        return @($candidates)
+    }
+
+    Add-CodexAppCandidate $candidates (Join-Path $localAppData "OpenAI\Codex\app")
+    Add-CodexAppCandidate $candidates (Join-Path $localAppData "OpenAI\Codex")
+    Add-CodexAppCandidate $candidates (Join-Path $localAppData "Programs\Codex")
+    Add-CodexAppCandidate $candidates (Join-Path $localAppData "Programs\Codex\app")
+    Add-CodexAppCandidate $candidates (Join-Path $localAppData "Programs\OpenAI Codex")
+    Add-CodexAppCandidate $candidates (Join-Path $programFiles "Codex")
+    Add-CodexAppCandidate $candidates (Join-Path $programFiles "OpenAI\Codex")
+    if (-not [string]::IsNullOrWhiteSpace($programFilesX86)) {
+        Add-CodexAppCandidate $candidates (Join-Path $programFilesX86 "Codex")
+        Add-CodexAppCandidate $candidates (Join-Path $programFilesX86 "OpenAI\Codex")
+    }
+
+    foreach ($root in @((Join-Path $localAppData "Programs"), (Join-Path $localAppData "OpenAI"), $programFiles, $programFilesX86)) {
+        if ([string]::IsNullOrWhiteSpace($root) -or -not (Test-Path $root)) {
+            continue
+        }
+
+        Get-ChildItem $root -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match "Codex" } |
+            ForEach-Object {
+                Add-CodexAppCandidate $candidates $_.FullName
+                Add-CodexAppCandidate $candidates (Join-Path $_.FullName "app")
+            }
+    }
+
+    Add-CodexRegistryCandidates $candidates
+    Add-CodexAppxCandidates $candidates
+    Add-CodexAppCandidate $candidates $TargetApp
+
+    return @($candidates)
+}
+
+function Test-CodexDesktopApp {
+    param([string]$Path)
+
+    return (
+        -not [string]::IsNullOrWhiteSpace($Path) -and
+        (Test-Path (Join-Path $Path "Codex.exe")) -and
+        (Test-Path (Join-Path $Path "resources\app.asar"))
+    )
+}
+
+function Test-CodexBrowserUseApp {
+    param([string]$Path)
+
+    return (
+        -not [string]::IsNullOrWhiteSpace($Path) -and
+        (Test-Path (Join-Path $Path "resources\node_repl.exe")) -and
+        (Test-Path (Join-Path $Path "resources\plugins\openai-bundled\plugins\browser-use\scripts\browser-client.mjs"))
+    )
+}
+
 function Update-CodexNodeReplBrowserUseConfig {
     param([string]$PatchedApp)
 
@@ -186,32 +382,12 @@ $targetRoot = Join-Path $localAppData "OpenAI\CodexPatched"
 $targetApp = Join-Path $targetRoot "app"
 $extractDir = Join-Path ([IO.Path]::GetTempPath()) "codex-desktop-patch-app-asar"
 
-$sourceCandidates = if ($SourceApp) {
-    @($SourceApp)
-} else {
-    @(
-        (Join-Path $localAppData "OpenAI\Codex\app"),
-        (Join-Path $localAppData "Programs\Codex"),
-        $targetApp
-    )
-}
-
-$repairCandidates = if ($SourceApp) {
-    @($SourceApp)
-} else {
-    @(
-        $targetApp,
-        (Join-Path $localAppData "Programs\Codex"),
-        (Join-Path $localAppData "OpenAI\Codex\app")
-    )
-}
+$sourceCandidates = Get-CodexAppCandidates -SourceApp $SourceApp -TargetApp $targetApp
+$repairCandidates = @($targetApp) + $sourceCandidates | Select-Object -Unique
 
 $repairApp = $null
 foreach ($candidate in $repairCandidates) {
-    if (
-        (Test-Path (Join-Path $candidate "resources\node_repl.exe")) -and
-        (Test-Path (Join-Path $candidate "resources\plugins\openai-bundled\plugins\browser-use\scripts\browser-client.mjs"))
-    ) {
+    if (Test-CodexBrowserUseApp $candidate) {
         $repairApp = [IO.Path]::GetFullPath($candidate)
         break
     }
@@ -219,10 +395,7 @@ foreach ($candidate in $repairCandidates) {
 
 $sourceApp = $null
 foreach ($candidate in $sourceCandidates) {
-    if (
-        (Test-Path (Join-Path $candidate "Codex.exe")) -and
-        (Test-Path (Join-Path $candidate "resources\app.asar"))
-    ) {
+    if (Test-CodexDesktopApp $candidate) {
         $sourceApp = [IO.Path]::GetFullPath($candidate)
         break
     }
@@ -253,7 +426,14 @@ if (-not $sourceApp) {
 }
 
 $runningCodex = Get-Process -Name Codex,codex -ErrorAction SilentlyContinue |
-    Where-Object { $_.Path -like (Join-Path $localAppData "OpenAI\Codex*") }
+    Where-Object {
+        $_.Path -and (
+            $_.Path -like (Join-Path $localAppData "OpenAI\Codex*") -or
+            $_.Path -like (Join-Path $localAppData "Programs\Codex*") -or
+            $_.Path -like "$sourceApp*" -or
+            $_.Path -like "$targetApp*"
+        )
+    }
 
 if ($runningCodex) {
     throw "Close all Codex windows and background Codex processes, then rerun this script."

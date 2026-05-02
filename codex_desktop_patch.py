@@ -215,14 +215,14 @@ def patch_browser_use_iab_route_fallback(root: Path) -> bool:
     text = path.read_text(encoding="utf-8")
     changed = False
 
-    old = (
+    original_old = (
         "resolveBrowserRoute(e){let t=this.turnRoutes.get(JC(e));if(t==null)throw J().warning(`IAB_LIFECYCLE missing browser use turn route`,"
         "{safe:e,sensitive:{}}),Error(`No Codex browser route captured for browser session ${e.conversationId} turn ${e.turnId}`);"
         "let n={conversationId:t.conversationId,windowId:t.windowId};return this.assertWindowAlive(n),"
         "J().info(`IAB_LIFECYCLE resolved browser use route`,{safe:{conversationId:t.conversationId,"
         "ownerWebContentsId:t.ownerWebContentsId,turnId:t.turnId,windowId:t.windowId},sensitive:{}}),n}"
     )
-    new = (
+    previous_fallback = (
         "resolveBrowserRoute(e){let t=this.turnRoutes.get(JC(e));if(t==null){if(this.options.browserRoute!=null&&"
         "e.conversationId===this.options.browserRoute.conversationId){let t=this.options.browserRoute;return this.assertWindowAlive(t),"
         "J().warning(`IAB_LIFECYCLE resolved browser use route from conversation fallback`,{safe:{conversationId:t.conversationId,"
@@ -232,9 +232,28 @@ def patch_browser_use_iab_route_fallback(root: Path) -> bool:
         "J().info(`IAB_LIFECYCLE resolved browser use route`,{safe:{conversationId:t.conversationId,"
         "ownerWebContentsId:t.ownerWebContentsId,turnId:t.turnId,windowId:t.windowId},sensitive:{}}),n}"
     )
-    if "resolved browser use route from conversation fallback" not in text:
-        text = replace_once(text, old, new, "browser-use IAB route fallback")
-        changed = True
+    new = (
+        "resolveBrowserRoute(e){let t=this.turnRoutes.get(JC(e));if(t==null){if(this.options.browserRoute!=null&&"
+        "e.conversationId===this.options.browserRoute.conversationId){let t=this.options.browserRoute;return this.assertWindowAlive(t),"
+        "J().warning(`IAB_LIFECYCLE resolved browser use route from conversation fallback`,{safe:{conversationId:t.conversationId,"
+        "turnId:e.turnId,windowId:t.windowId},sensitive:{}}),t}"
+        "let n=null;for(let t of this.windows.values())if(t.conversations.has(e.conversationId)&&this.delegate?.isWindowAlive(t.windowId)===!0)"
+        "{n={conversationId:e.conversationId,windowId:t.windowId};break}"
+        "if(n!=null)return this.assertWindowAlive(n),J().warning(`IAB_LIFECYCLE resolved browser use route from registered conversation fallback`,"
+        "{safe:{conversationId:n.conversationId,turnId:e.turnId,windowId:n.windowId},sensitive:{}}),n;"
+        "throw J().warning(`IAB_LIFECYCLE missing browser use turn route`,"
+        "{safe:e,sensitive:{}}),Error(`No Codex browser route captured for browser session ${e.conversationId} turn ${e.turnId}`)}"
+        "let n={conversationId:t.conversationId,windowId:t.windowId};return this.assertWindowAlive(n),"
+        "J().info(`IAB_LIFECYCLE resolved browser use route`,{safe:{conversationId:t.conversationId,"
+        "ownerWebContentsId:t.ownerWebContentsId,turnId:t.turnId,windowId:t.windowId},sensitive:{}}),n}"
+    )
+    if "resolved browser use route from registered conversation fallback" not in text:
+        if "resolved browser use route from conversation fallback" in text:
+            text = replace_once(text, previous_fallback, new, "browser-use IAB route fallback upgrade")
+            changed = True
+        else:
+            text = replace_once(text, original_old, new, "browser-use IAB route fallback")
+            changed = True
 
     old = (
         "canServeTurnForBrowserRoute(e,t){let n=this.turnRoutes.get(JC(e));return n==null||"
