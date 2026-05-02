@@ -201,16 +201,6 @@ Check `%USERPROFILE%\.codex\backups` first. The retarget action backs up `state_
 
 Run `.\install_windows.ps1 -RepairBrowserUseOnly`, then fully close and reopen the patched app. This rewrites `%USERPROFILE%\.codex\config.toml` so `node_repl` trusts the browser-use client shipped inside `%LOCALAPPDATA%\OpenAI\CodexPatched\app`.
 
-### Local cache contains stale Full Access MCP tools
-
-This is a local Codex profile cache issue, not part of the patch distribution. If your own Codex session keeps selecting old Full Access MCP browser tools, run:
-
-```powershell
-.\install_windows.ps1 -RepairBrowserUseOnly -PurgeFullAccessMcp
-```
-
-The purge option removes cached tool metadata entries whose connector is `Full Access MCP` or whose namespace is `mcp__codex_apps__full_access_mcp`. It is not part of the default install path.
-
 ## Security
 
 Review the script before running it. It edits local application files, updates the Electron ASAR integrity hash in the copied `Codex.exe`, and updates local Codex config for the patched `node_repl`. The runtime project path action edits local Codex profile state for the selected moved project.

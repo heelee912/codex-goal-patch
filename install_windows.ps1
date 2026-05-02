@@ -5,8 +5,7 @@ param(
     [switch]$Force,
     [switch]$Launch,
     [string]$SourceApp,
-    [switch]$RepairBrowserUseOnly,
-    [switch]$PurgeFullAccessMcp
+    [switch]$RepairBrowserUseOnly
 )
 
 Set-StrictMode -Version Latest
@@ -182,88 +181,6 @@ function Update-CodexNodeReplBrowserUseConfig {
     [System.IO.File]::WriteAllText($configPath, $text, $utf8NoBom)
 }
 
-function Get-JsonProperty {
-    param(
-        [object]$Object,
-        [string]$Name
-    )
-
-    if (-not $Object) {
-        return $null
-    }
-
-    $property = $Object.PSObject.Properties[$Name]
-    if (-not $property) {
-        return $null
-    }
-
-    return $property.Value
-}
-
-function Test-FullAccessMcpTool {
-    param([object]$Tool)
-
-    $connectorName = Get-JsonProperty $Tool "connector_name"
-    $toolNamespace = Get-JsonProperty $Tool "tool_namespace"
-
-    if ($connectorName -eq "Full Access MCP") {
-        return $true
-    }
-    if ($toolNamespace -eq "mcp__codex_apps__full_access_mcp") {
-        return $true
-    }
-
-    $serialized = $Tool | ConvertTo-Json -Depth 60 -Compress
-    return ($serialized -like "*Full Access MCP*" -or $serialized -like "*full_access_mcp*")
-}
-
-function Remove-FullAccessMcpToolCache {
-    $userProfile = [Environment]::GetFolderPath("UserProfile")
-    $codexCacheRoot = Join-Path $userProfile ".codex\cache"
-
-    if (-not (Test-Path $codexCacheRoot)) {
-        Write-Host "No Codex cache directory found at $codexCacheRoot"
-        return 0
-    }
-
-    $jsonFiles = @(Get-ChildItem -Path $codexCacheRoot -Directory -Filter "codex_apps_tools*" -ErrorAction SilentlyContinue |
-        ForEach-Object { Get-ChildItem -Path $_.FullName -File -Filter "*.json" -ErrorAction SilentlyContinue })
-
-    if ($jsonFiles.Count -eq 0) {
-        Write-Host "No Codex app tool cache JSON files found."
-        return 0
-    }
-
-    $totalRemoved = 0
-    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-
-    foreach ($jsonFile in $jsonFiles) {
-        $raw = Get-Content -Raw -Encoding UTF8 $jsonFile.FullName
-        $data = $raw | ConvertFrom-Json
-        $toolsProperty = $data.PSObject.Properties["tools"]
-
-        if (-not $toolsProperty) {
-            continue
-        }
-
-        $tools = @($toolsProperty.Value)
-        $keptTools = @($tools | Where-Object { -not (Test-FullAccessMcpTool $_) })
-        $removed = $tools.Count - $keptTools.Count
-
-        if ($removed -le 0) {
-            continue
-        }
-
-        $data.tools = @($keptTools)
-        $updated = $data | ConvertTo-Json -Depth 100
-        [System.IO.File]::WriteAllText($jsonFile.FullName, $updated + [Environment]::NewLine, $utf8NoBom)
-        $totalRemoved += $removed
-        Write-Host "Removed $removed Full Access MCP tool cache entries from $($jsonFile.FullName)"
-    }
-
-    return $totalRemoved
-}
-
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $patchScript = Join-Path $repoRoot "codex_desktop_patch.py"
 $localAppData = [Environment]::GetFolderPath("LocalApplicationData")
@@ -317,16 +234,6 @@ foreach ($candidate in $sourceCandidates) {
 
 if (-not (Test-Path $patchScript)) {
     throw "Cannot find codex_desktop_patch.py next to this installer."
-}
-
-if ($PurgeFullAccessMcp) {
-    Write-Step "Purging Full Access MCP from Codex app tool cache"
-    $removedFullAccessMcpTools = Remove-FullAccessMcpToolCache
-    if ($removedFullAccessMcpTools -eq 0) {
-        Write-Host "No Full Access MCP cache entries were found."
-    } else {
-        Write-Host "Removed $removedFullAccessMcpTools Full Access MCP cache entries." -ForegroundColor Green
-    }
 }
 
 if ($RepairBrowserUseOnly) {
