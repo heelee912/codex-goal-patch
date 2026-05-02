@@ -37,7 +37,7 @@ When it finishes, launch:
 %LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe
 
 Use /goal your goal text in a Codex chat to set or replace the thread goal.
-If you moved a project folder, right-click that project in the sidebar and choose Change project folder / 프로젝트 경로 변경. Select the new folder location. This keeps the chat history and retargets the workspace path Codex uses.
+If you moved a project folder, right-click that project in the sidebar and choose Change project folder / 프로젝트 경로 변경. Select the new folder location. This keeps the chat history and retargets the cwd/workspace path Codex uses.
 ```
 
 If a patched copy already exists, run:
@@ -58,8 +58,34 @@ To install and launch the patched app in one step:
 - Setting a new goal first clears the previous thread goal, so a completed or stale goal does not block the next one.
 - Local project sidebar menu gets **Change project folder** / **프로젝트 경로 변경**.
 - When a project folder was moved, the app can retarget existing chats to the new folder path instead of treating the old path as permanently missing.
+- Existing chats keep their session history while their saved `cwd` is updated to the new folder.
 - `browser-use` is configured to trust the patched app's bundled browser client when `node_repl` is launched from the patched copy.
 - Electron ASAR integrity in `Codex.exe` can be updated after repacking `app.asar`.
+
+## About `cwd` and Moved Folders
+
+`cwd` means current working directory. In Codex, each local chat is tied to a project folder path. That path decides where shell commands run and which workspace the chat sees.
+
+If you move a project folder, old chats can still point at the old path. The patched app adds **Change project folder** / **프로젝트 경로 변경** so you can choose the new location for that existing project.
+
+The retarget action updates Codex's saved local state for matching chats:
+
+- `state_5.sqlite` thread `cwd` values.
+- Matching session JSONL `payload.cwd` values.
+- Saved sidebar/workspace root state in `.codex-global-state.json`.
+
+The retarget action does not:
+
+- Delete chats.
+- Create new replacement chats.
+- Move files or folders on disk.
+- Change unrelated projects.
+
+Before writing changes, it creates a backup under:
+
+```text
+%USERPROFILE%\.codex\backups\cwd-retarget-*
+```
 
 ## Important Notes
 
