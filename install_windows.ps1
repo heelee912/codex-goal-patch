@@ -378,6 +378,32 @@ function Update-CodexNodeReplBrowserUseConfig {
     [System.IO.File]::WriteAllText($configPath, $text, $utf8NoBom)
 }
 
+function Stop-CodexPatchedNodeReplProcesses {
+    param([string]$PatchedApp)
+
+    $nodeReplExe = [IO.Path]::GetFullPath((Join-Path $PatchedApp "resources\node_repl.exe"))
+    $stopped = 0
+    $processes = @(Get-Process -Name node_repl -ErrorAction SilentlyContinue |
+        Where-Object {
+            try {
+                $_.Path -and ([IO.Path]::GetFullPath($_.Path) -ieq $nodeReplExe)
+            } catch {
+                $false
+            }
+        })
+
+    foreach ($process in $processes) {
+        try {
+            Stop-Process -Id $process.Id -Force -ErrorAction Stop
+            $stopped += 1
+        } catch {
+            Write-Warning "Could not stop stale node_repl process $($process.Id): $($_.Exception.Message)"
+        }
+    }
+
+    return $stopped
+}
+
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $patchScript = Join-Path $repoRoot "codex_desktop_patch.py"
 $localAppData = [Environment]::GetFolderPath("LocalApplicationData")
@@ -415,11 +441,16 @@ if ($RepairBrowserUseOnly) {
 
     Write-Step "Repairing browser-use node_repl configuration"
     Update-CodexNodeReplBrowserUseConfig $repairApp
+    $stoppedNodeReplCount = Stop-CodexPatchedNodeReplProcesses $repairApp
     Write-Host ""
     Write-Host "Done. browser-use node_repl config now points at:" -ForegroundColor Green
     Write-Host "  $(Join-Path $repairApp "resources\node_repl.exe")"
+    if ($stoppedNodeReplCount -gt 0) {
+        Write-Host ""
+        Write-Host "Stopped stale patched node_repl process(es): $stoppedNodeReplCount"
+    }
     Write-Host ""
-    Write-Host "Fully close and reopen Codex for this config to be picked up."
+    Write-Host "Retry browser-use. If the same error persists, fully close and reopen Codex."
     exit 0
 }
 

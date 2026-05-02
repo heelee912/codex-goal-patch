@@ -345,6 +345,25 @@ def patch_browser_use_iab_route_fallback(root: Path) -> bool:
     return changed
 
 
+def patch_browser_use_alert_shim(root: Path) -> bool:
+    path = root / ".vite/build/comment-preload.js"
+    text = path.read_text(encoding="utf-8")
+    if "__codexDesktopPatchAlertShim" in text:
+        return False
+
+    old = "var lf={interactionMode:`browse`,isAgentControllingBrowser:!1,comments:[],intlConfig:p,viewportScale:1,zoomPercent:100},uf=!1,df=null;"
+    new = old + (
+        "(()=>{try{if(window.__codexDesktopPatchAlertShim)return;"
+        "Object.defineProperty(window,`__codexDesktopPatchAlertShim`,{value:!0});"
+        "let e=window.alert;window.alert=function(t){if(lf?.isAgentControllingBrowser===!0)"
+        "{try{console.warn(`[CodexDesktopPatch] suppressed alert during browser-use`,String(t??``))}catch{}return}"
+        "return e.call(window,t)}}catch{}})();"
+    )
+    text = replace_once(text, old, new, "browser-use alert shim")
+    path.write_text(text, encoding="utf-8")
+    return True
+
+
 def asar_header_hash(path: Path) -> str:
     with path.open("rb") as f:
         header = f.read(16)
@@ -406,6 +425,7 @@ def main() -> int:
         | patch_index(root)
         | patch_cwd_retarget(root)
         | patch_browser_use_iab_route_fallback(root)
+        | patch_browser_use_alert_shim(root)
     )
     print("patched Codex desktop goal/cwd/browser-use support" if changed else "Codex desktop patch already applied")
     return 0
