@@ -11,6 +11,47 @@ Unofficial local patch bundle for the Codex desktop app. It fixes the `/goal` wo
 
 This repository does not include OpenAI binaries, `app.asar`, extracted application files, user profiles, tokens, or cache files. Users apply the patch to their own local Codex installation at their own risk.
 
+## Plain User Guide
+
+This is a Windows-only patch installer for people who already have the Codex desktop app installed.
+
+It does not give you a modified Codex installer. Instead, it copies your own local Codex app into a separate folder, patches that copy, and leaves the original app installed.
+
+After installing, use:
+
+```text
+%LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe
+```
+
+You can tell non-technical users this:
+
+```text
+Install the official Codex desktop app first. Then install Python 3.11+ and Node.js LTS if you do not already have them.
+
+Download this repository as a ZIP, extract it, close Codex completely, open PowerShell in the extracted folder, and run:
+
+Set-ExecutionPolicy -Scope Process Bypass
+.\install_windows.ps1
+
+When it finishes, launch:
+%LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe
+
+Use /goal your goal text in a Codex chat to set or replace the thread goal.
+If you moved a project folder, right-click that project in the sidebar and choose Change project folder / 프로젝트 경로 변경. Select the new folder location. This keeps the chat history and retargets the workspace path Codex uses.
+```
+
+If a patched copy already exists, run:
+
+```powershell
+.\install_windows.ps1 -Force
+```
+
+To install and launch the patched app in one step:
+
+```powershell
+.\install_windows.ps1 -Launch
+```
+
 ## What This Fixes
 
 - `/goal <objective>` can be entered from the composer.
@@ -23,9 +64,12 @@ This repository does not include OpenAI binaries, `app.asar`, extracted applicat
 ## Important Notes
 
 - This is not an official OpenAI project.
+- This repository is source-only. It does not redistribute Codex binaries or a prepatched app.
 - Do not publish or redistribute `Codex.exe`, `app.asar`, extracted app bundles, `.codex` profiles, auth files, logs, or caches.
+- The patched app is installed as a separate copy named `CodexPatched`. Your official Codex install remains available.
 - Codex updates can change the minified bundle names and code patterns. If the script cannot find exactly one match, it stops instead of guessing.
 - Patch a copied app directory, not your only Codex install.
+- The project path action does not move folders on disk. It only updates Codex's saved workspace path for matching local chats.
 
 ## Requirements
 
@@ -50,6 +94,12 @@ If you already installed a patched copy and want to replace it:
 
 ```powershell
 .\install_windows.ps1 -Force
+```
+
+If you want the installer to open the patched app when it finishes:
+
+```powershell
+.\install_windows.ps1 -Launch
 ```
 
 If your Codex app is installed in a nonstandard folder:
@@ -123,6 +173,8 @@ python .\codex_desktop_patch.py --fix-integrity $dst
 
 If the official Codex app is already running, close it first. Electron may forward launches to the already-running instance.
 
+The installer prints the exact path to the patched `Codex.exe` when it succeeds.
+
 ## Verify
 
 For `/goal`, in a local Codex thread:
@@ -140,6 +192,8 @@ For moved project folders:
 3. Click **Change project folder** or **프로젝트 경로 변경**.
 4. Select the folder's new location.
 5. The patch updates the sidebar project path, matching local thread cwd values, and session metadata. A backup is written under `%USERPROFILE%\.codex\backups\cwd-retarget-*`.
+
+This keeps the existing chats. It changes the workspace path those chats use. It does not delete sessions and does not move project files.
 
 For `browser-use`:
 
