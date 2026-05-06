@@ -8,7 +8,7 @@ This repository does not include OpenAI binaries, `app.asar`, extracted applicat
 
 The initial release added the missing desktop UI wiring for Codex goals: `/goal <objective>` appears in the local composer, calls Codex's persisted `thread/goal/set` API, and lets Codex's own goal runtime keep working until the goal is complete, paused, budget-limited, or stopped.
 
-This update keeps that real goal behavior and adds the install-time pieces needed on current Codex desktop builds: the installer enables `[features].goals = true` automatically in `%USERPROFILE%\.codex\config.toml`, preserves existing TOML sections, supports the current minified bundle names, and restores already-patched copies that briefly used a one-turn "send the objective as a normal message" autostart workaround back to the real goal runtime path.
+This update keeps that real goal behavior and adds the install-time pieces needed on current Codex desktop builds: the installer enables `[features].goals = true` automatically in `%USERPROFILE%\.codex\config.toml`, preserves existing TOML sections, supports the current minified bundle names, resumes the thread after setting the goal so Codex's continuation runtime starts even when the desktop view had not loaded the thread yet, and restores already-patched copies that briefly used a one-turn "send the objective as a normal message" autostart workaround back to the real goal runtime path.
 
 ## Screenshots
 
