@@ -6,7 +6,9 @@ This repository does not include OpenAI binaries, `app.asar`, extracted applicat
 
 ## Latest Update
 
-The `/goal <objective>` flow now restores the real Codex goal runtime behavior. In a loaded local thread, the composer calls `thread/goal/set` with an active goal and does not fake startup by sending the objective as a normal one-turn message. Codex's goal runtime owns continuation turns until the goal is complete, paused, budget-limited, or stopped. The installer also enables the local `goals` feature flag automatically in `%USERPROFILE%\.codex\config.toml`.
+The initial release added the missing desktop UI wiring for Codex goals: `/goal <objective>` appears in the local composer, calls Codex's persisted `thread/goal/set` API, and lets Codex's own goal runtime keep working until the goal is complete, paused, budget-limited, or stopped.
+
+This update keeps that real goal behavior and adds the install-time pieces needed on current Codex desktop builds: the installer enables `[features].goals = true` automatically in `%USERPROFILE%\.codex\config.toml`, preserves existing TOML sections, supports the current minified bundle names, and restores already-patched copies that briefly used a one-turn "send the objective as a normal message" autostart workaround back to the real goal runtime path.
 
 ## Screenshots
 
@@ -79,7 +81,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 When it finishes, launch:
 %LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe
 
-Use /goal your goal text in a loaded local Codex chat to set or replace the active thread goal. Codex then uses its built-in goal continuation runtime to keep working until the goal is marked complete, paused, budget-limited, or stopped. On the new-chat home screen, `/goal <objective>` queues that goal for the next local chat you start from the same project.
+Use /goal your goal text in a loaded local Codex chat to set or replace the active thread goal. No extra first message is needed there: Codex uses its built-in goal continuation runtime to start or continue work until the goal is marked complete, paused, budget-limited, or stopped. On the new-chat home screen, `/goal <objective>` queues that goal for the next local chat you start from the same project.
 If you moved a project folder, right-click that project in the sidebar and choose Change project folder / 프로젝트 경로 변경. Select the new folder location. This keeps the chat history and retargets the cwd/workspace path Codex uses.
 
 If the installer cannot find Codex, find the official Codex.exe path and run the installer again with -SourceApp. For Store/AppX installs the path may look like:
@@ -101,7 +103,7 @@ To install and launch the patched app in one step:
 ## What This Fixes
 
 - `/goal <objective>` can be entered from the composer.
-- `/goal <objective>` in an existing loaded local thread sets the active thread goal through Codex's `thread/goal/set` API and lets the real goal runtime start/continue work.
+- `/goal <objective>` in an existing loaded local thread sets the active thread goal through Codex's `thread/goal/set` API and lets the real goal runtime start/continue work automatically.
 - The patch does not send `/goal` objectives as ordinary one-turn chat messages.
 - `/goal <objective>` appears on the new-chat home composer. If no thread exists yet, the goal is queued and applied to the next local chat created from that project.
 - The installer enables the local Codex `goals` feature flag in `%USERPROFILE%\.codex\config.toml`.
