@@ -85,6 +85,41 @@ function ConvertTo-TomlLiteral {
     return "'" + ($Value -replace "'", "''") + "'"
 }
 
+function Set-CodexTomlFeatureFlag {
+    param(
+        [string]$Text,
+        [string]$Name,
+        [bool]$Enabled
+    )
+
+    $line = "$Name = $($Enabled.ToString().ToLowerInvariant())"
+    $featuresPattern = "(?ms)^\[features\]\r?\n.*?(?=^\[|\z)"
+    $featuresMatch = [regex]::Match($Text, $featuresPattern)
+
+    if ($featuresMatch.Success) {
+        $section = $featuresMatch.Value
+        $linePattern = "(?m)^\s*$([regex]::Escape($Name))\s*=\s*(true|false)\s*$"
+        if ($section -match $linePattern) {
+            $section = [regex]::Replace($section, $linePattern, $line)
+        } else {
+            if (-not $section.EndsWith([Environment]::NewLine)) {
+                $section = $section.TrimEnd("`r", "`n") + [Environment]::NewLine
+            }
+            $section += $line + [Environment]::NewLine
+        }
+
+        return $Text.Substring(0, $featuresMatch.Index) +
+            $section +
+            $Text.Substring($featuresMatch.Index + $featuresMatch.Length)
+    }
+
+    if ($Text.Length -gt 0 -and -not $Text.EndsWith([Environment]::NewLine)) {
+        $Text += [Environment]::NewLine
+    }
+
+    return $Text + [Environment]::NewLine + "[features]" + [Environment]::NewLine + $line + [Environment]::NewLine
+}
+
 function Get-OptionalBrowserUseRoot {
     param([string]$Root)
 
@@ -374,6 +409,8 @@ function Update-CodexNodeReplBrowserUseConfig {
         }
         $text += [Environment]::NewLine + $section
     }
+
+    $text = Set-CodexTomlFeatureFlag $text "goals" $true
 
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($configPath, $text, $utf8NoBom)

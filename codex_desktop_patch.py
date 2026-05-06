@@ -28,17 +28,32 @@ def find_asset(root: Path, pattern: str, marker: str, label: str) -> Path:
     return matches[0]
 
 
+def find_build_file(root: Path, pattern: str, marker: str, label: str) -> Path:
+    assets = root / ".vite/build"
+    matches = []
+    for path in sorted(assets.glob(pattern)):
+        try:
+            if marker in path.read_text(encoding="utf-8"):
+                matches.append(path)
+        except UnicodeDecodeError:
+            continue
+    if len(matches) != 1:
+        raise RuntimeError(f"{label}: expected 1 build file match, found {len(matches)}")
+    return matches[0]
+
+
 def patch_composer(root: Path) -> bool:
     path = find_asset(
         root,
         "composer-*.js",
-        "function cU(e){let t=/^\\s*\\/side",
+        "/^\\s*\\/side",
         "composer asset",
     )
     text = path.read_text(encoding="utf-8")
     changed = False
 
     old = "function cU(e){let t=/^\\s*\\/side(?:\\s+([\\s\\S]*?))?\\s*$/.exec(e);return t==null?null:t[1]?.trim()??``}"
+    current_side_parser = "function lU(e){let t=/^\\s*\\/side(?:\\s+([\\s\\S]*?))?\\s*$/.exec(e);return t==null?null:t[1]?.trim()??``}"
     goal_helpers = (
         "function __codexGoalParse(e){let t=/^\\s*\\/goal(?:\\s+([\\s\\S]*?))?\\s*$/.exec(e);"
         "return t==null?null:t[1]?.trim()??``}"
@@ -60,9 +75,20 @@ def patch_composer(root: Path) -> bool:
         "(f={id:`goal`,title:s,description:c,requiresEmptyComposer:!1,Icon:Kf,enabled:l,onSelect:u,dependencies:[...d,e,t]},"
         "n[7]=s,n[8]=c,n[9]=l,n[10]=u,n[11]=d,n[12]=e,n[13]=t,n[14]=f):f=n[14],rx(f),null}"
     )
+    current_goal_helpers = goal_helpers.replace("Ci(Lv)", "Ci(Rv)").replace("Icon:Kf", "Icon:B_").replace("rx(f)", "ix(f)")
     new = old + goal_helpers
     if "__codexGoalParse" not in text:
-        text = replace_once(text, old, new, "composer goal command insertion")
+        if old in text:
+            text = replace_once(text, old, new, "composer goal command insertion")
+        elif current_side_parser in text:
+            text = replace_once(
+                text,
+                current_side_parser,
+                current_side_parser + current_goal_helpers,
+                "composer goal command insertion",
+            )
+        else:
+            raise RuntimeError("composer side slash parser: expected 1 known parser match, found 0")
         changed = True
     elif "__codexGoalPendingKey" not in text:
         old_goal_helpers = (
@@ -95,6 +121,15 @@ def patch_composer(root: Path) -> bool:
     )
     new = (
         "let i=Mn.getText(),__goal=W&&(n?.type===`local`||Jn===`local`)?__codexGoalParse(i):null;"
+        "if(__goal!=null){if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
+        "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),i=__goal}"
+        "else{Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
+        "I.get(Il).success(`Goal set`),i=__goal}catch(e){$o(e),Di();return}finally{Pt(!1)}}}"
+        "let o=W&&n?.type===`local`?cU(i):null;"
+        "if(o!=null){Ln(i),Rn(),Pt(!0);try{await Jo(o)&&(Ro(),C?.())}catch(e){qo(e)}finally{Pt(!1),Di()}return}"
+    )
+    old_goal_submit_set_only = (
+        "let i=Mn.getText(),__goal=W&&(n?.type===`local`||Jn===`local`)?__codexGoalParse(i):null;"
         "if(__goal!=null){Ln(i),Rn();if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
         "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),Ro(),Di();return}"
         "Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
@@ -102,8 +137,34 @@ def patch_composer(root: Path) -> bool:
         "let o=W&&n?.type===`local`?cU(i):null;"
         "if(o!=null){Ln(i),Rn(),Pt(!0);try{await Jo(o)&&(Ro(),C?.())}catch(e){qo(e)}finally{Pt(!1),Di()}return}"
     )
-    if "ya(`set-thread-goal`" not in text:
-        text = replace_once(text, old, new, "composer submit parser insertion")
+    if "Usage: /goal <objective>" not in text:
+        if old in text:
+            text = replace_once(text, old, new, "composer submit parser insertion")
+        else:
+            old_current = (
+                "let i=Mn.getText(),o=W&&n?.type===`local`?lU(i):null;"
+                "if(o!=null){Ln(i),Rn(),Pt(!0);try{await Jo(o)&&(Ro(),C?.())}catch(e){qo(e)}finally{Pt(!1),Di()}return}"
+            )
+            new_current = new.replace("?cU(i):null;", "?lU(i):null;")
+            text = replace_once(text, old_current, new_current, "composer submit parser insertion")
+        changed = True
+    elif "i=__goal}else{Pt(!0);try" not in text:
+        old_goal_submit_set_only_current = old_goal_submit_set_only.replace("?cU(i):null;", "?lU(i):null;")
+        new_current = new.replace("?cU(i):null;", "?lU(i):null;")
+        if old_goal_submit_set_only_current in text:
+            text = replace_once(
+                text,
+                old_goal_submit_set_only_current,
+                new_current,
+                "composer goal submit autostart",
+            )
+        else:
+            text = replace_once(
+                text,
+                old_goal_submit_set_only,
+                new,
+                "composer goal submit autostart",
+            )
         changed = True
     elif "Goal queued for next chat" not in text:
         old_goal_submit = (
@@ -114,10 +175,10 @@ def patch_composer(root: Path) -> bool:
         )
         new_goal_submit = (
             "let i=Mn.getText(),__goal=W&&(n?.type===`local`||Jn===`local`)?__codexGoalParse(i):null;"
-            "if(__goal!=null){Ln(i),Rn();if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
-            "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),Ro(),Di();return}"
-            "Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
-            "I.get(Il).success(`Goal set`),Ro(),C?.()}catch(e){$o(e)}finally{Pt(!1),Di()}return}"
+            "if(__goal!=null){if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
+            "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),i=__goal}"
+            "else{Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
+            "I.get(Il).success(`Goal set`),i=__goal}catch(e){$o(e),Di();return}finally{Pt(!1)}}}"
         )
         text = replace_once(text, old_goal_submit, new_goal_submit, "composer goal submit home support")
         changed = True
@@ -139,7 +200,23 @@ def patch_composer(root: Path) -> bool:
         "(0,Q.jsx)(__CodexGoalSlashCommand,{})" not in text
         and "(0,Q.jsx)(__CodexGoalSlashCommand,{composerMode:Jn,resolvedCwd:hr})" not in text
     ):
-        text = replace_once(text, old, new, "composer command component render insertion")
+        if old in text:
+            text = replace_once(text, old, new, "composer command component render insertion")
+        else:
+            old_current = (
+                "return(0,Q.jsxs)(Q.Fragment,{children:[(0,Q.jsx)(nV,{composerMode:Jn,currentLocalExecutionCwd:hr,"
+                "currentLocalExecutionHostId:or,effectiveIdeContextStatus:qr,effectiveIsAutoContextOn:Ur,resolvedCwd:Cn,"
+                "setIsAutoContextOn:Br,setIsStatusMenuOpen:at,skillLookupRoots:Wi}),"
+                "(0,Q.jsx)(cU,{enabled:Ko,onOpenSideChat:async()=>{try{await Jo(null)}catch(e){qo(e)}}}),"
+            )
+            new_current = (
+                "return(0,Q.jsxs)(Q.Fragment,{children:[(0,Q.jsx)(nV,{composerMode:Jn,currentLocalExecutionCwd:hr,"
+                "currentLocalExecutionHostId:or,effectiveIdeContextStatus:qr,effectiveIsAutoContextOn:Ur,resolvedCwd:Cn,"
+                "setIsAutoContextOn:Br,setIsStatusMenuOpen:at,skillLookupRoots:Wi}),"
+                "(0,Q.jsx)(__CodexGoalSlashCommand,{composerMode:Jn,resolvedCwd:hr}),"
+                "(0,Q.jsx)(cU,{enabled:Ko,onOpenSideChat:async()=>{try{await Jo(null)}catch(e){qo(e)}}}),"
+            )
+            text = replace_once(text, old_current, new_current, "composer command component render insertion")
         changed = True
     elif "(0,Q.jsx)(__CodexGoalSlashCommand,{composerMode:Jn,resolvedCwd:hr})" not in text:
         text = replace_once(
@@ -151,14 +228,22 @@ def patch_composer(root: Path) -> bool:
         changed = True
 
     if "__codexGoalApplyPending(p,u)" not in text:
-        text = replace_once(
-            text,
-            "p=await q({attachments:Ka([...f.attachments??[],...s]),baseParams:f,hostId:o});wI(D,p,G,d.config),Xu(K,p,o,d.agentMode),",
+        old_pending = "p=await q({attachments:Ka([...f.attachments??[],...s]),baseParams:f,hostId:o});wI(D,p,G,d.config),Xu(K,p,o,d.agentMode),"
+        new_pending = (
             "p=await q({attachments:Ka([...f.attachments??[],...s]),baseParams:f,hostId:o});"
             "try{await __codexGoalApplyPending(p,u)&&D.get(Il).success(`Goal set`)}catch(e){Ho.warning(`[Composer] failed to apply queued goal`,{safe:{},sensitive:{error:e}}),D.get(Il).danger(`Failed to set queued goal`)}"
-            "wI(D,p,G,d.config),Xu(K,p,o,d.agentMode),",
-            "composer apply pending goal after new conversation",
+            "wI(D,p,G,d.config),Xu(K,p,o,d.agentMode),"
         )
+        if old_pending in text:
+            text = replace_once(text, old_pending, new_pending, "composer apply pending goal after new conversation")
+        else:
+            old_pending_current = "p=await ee({attachments:Ka([...f.attachments??[],...s]),baseParams:f,hostId:o});TI(D,p,G,d.config),Xu(K,p,o,d.agentMode),"
+            new_pending_current = (
+                "p=await ee({attachments:Ka([...f.attachments??[],...s]),baseParams:f,hostId:o});"
+                "try{await __codexGoalApplyPending(p,u)&&D.get(Il).success(`Goal set`)}catch(e){Ho.warning(`[Composer] failed to apply queued goal`,{safe:{},sensitive:{error:e}}),D.get(Il).danger(`Failed to set queued goal`)}"
+                "TI(D,p,G,d.config),Xu(K,p,o,d.agentMode),"
+            )
+            text = replace_once(text, old_pending_current, new_pending_current, "composer apply pending goal after new conversation")
         changed = True
 
     if changed:
@@ -196,7 +281,12 @@ CWD_RETARGET_MAIN_METHODS = r"""__codexCwdNorm(e){return String(e??``).trim().re
 
 
 def patch_cwd_main(root: Path) -> bool:
-    path = root / ".vite/build/main-j7E7jyI7.js"
+    path = find_build_file(
+        root,
+        "main-*.js",
+        "async addWorkspaceRootOption(e,n=!0,r){",
+        "main asset",
+    )
     text = path.read_text(encoding="utf-8")
     changed = False
 
@@ -235,16 +325,20 @@ def patch_cwd_renderer(root: Path) -> bool:
     if "sidebarElectron.retargetWorkspaceRootOption" in text:
         return False
 
-    text = replace_once(
-        text,
-        "let _e;t[46]!==o||t[47]!==ee?",
+    old = "let _e;t[46]!==o||t[47]!==ee?"
+    new = (
         "let __codexCwdRetarget=()=>{d(!1),J.dispatchMessage(`electron-retarget-workspace-root-option`,{root:n})},"
         "__codexCwdRetargetItem=(0,$.jsx)(ml.Item,{LeftIcon:Qt,onSelect:__codexCwdRetarget,"
         "children:(0,$.jsx)(Y,{id:`sidebarElectron.retargetWorkspaceRootOption`,"
         "defaultMessage:`Change project folder`,description:`Menu item to choose a new filesystem path for a moved local project`})});"
-        "let _e;t[46]!==o||t[47]!==ee?",
-        "renderer cwd retarget menu item",
+        "let _e;t[46]!==o||t[47]!==ee?"
     )
+    if old in text:
+        text = replace_once(text, old, new, "renderer cwd retarget menu item")
+    else:
+        old_current = "let _e;t[46]!==o||t[47]!==H?"
+        new_current = new.replace("t[47]!==ee?", "t[47]!==H?")
+        text = replace_once(text, old_current, new_current, "renderer cwd retarget menu item")
     text = replace_once(
         text,
         "children:[me,ge,_e,be,we,De]",
@@ -283,7 +377,12 @@ def patch_cwd_retarget(root: Path) -> bool:
 
 
 def patch_browser_use_iab_route_fallback(root: Path) -> bool:
-    path = root / ".vite/build/main-j7E7jyI7.js"
+    path = find_build_file(
+        root,
+        "main-*.js",
+        "resolveBrowserRoute(e){let t=this.turnRoutes.get(",
+        "main browser-use asset",
+    )
     text = path.read_text(encoding="utf-8")
     changed = False
 
@@ -323,8 +422,33 @@ def patch_browser_use_iab_route_fallback(root: Path) -> bool:
         if "resolved browser use route from conversation fallback" in text:
             text = replace_once(text, previous_fallback, new, "browser-use IAB route fallback upgrade")
             changed = True
-        else:
+        elif original_old in text:
             text = replace_once(text, original_old, new, "browser-use IAB route fallback")
+            changed = True
+        else:
+            current_old = (
+                "resolveBrowserRoute(e){let t=this.turnRoutes.get(XC(e));if(t==null)throw Y().warning(`IAB_LIFECYCLE missing browser use turn route`,"
+                "{safe:e,sensitive:{}}),Error(`No Codex browser route captured for browser session ${e.conversationId} turn ${e.turnId}`);"
+                "let n={conversationId:t.conversationId,windowId:t.windowId};return this.assertWindowAlive(n),"
+                "Y().info(`IAB_LIFECYCLE resolved browser use route`,{safe:{conversationId:t.conversationId,"
+                "ownerWebContentsId:t.ownerWebContentsId,turnId:t.turnId,windowId:t.windowId},sensitive:{}}),n}"
+            )
+            current_new = (
+                "resolveBrowserRoute(e){let t=this.turnRoutes.get(XC(e));if(t==null){if(this.options.browserRoute!=null&&"
+                "e.conversationId===this.options.browserRoute.conversationId){let t=this.options.browserRoute;return this.assertWindowAlive(t),"
+                "Y().warning(`IAB_LIFECYCLE resolved browser use route from conversation fallback`,{safe:{conversationId:t.conversationId,"
+                "turnId:e.turnId,windowId:t.windowId},sensitive:{}}),t}"
+                "let n=null;for(let t of this.windows.values())if(t.conversations.has(e.conversationId)&&this.delegate?.isWindowAlive(t.windowId)===!0)"
+                "{n={conversationId:e.conversationId,windowId:t.windowId};break}"
+                "if(n!=null)return this.assertWindowAlive(n),Y().warning(`IAB_LIFECYCLE resolved browser use route from registered conversation fallback`,"
+                "{safe:{conversationId:n.conversationId,turnId:e.turnId,windowId:n.windowId},sensitive:{}}),n;"
+                "throw Y().warning(`IAB_LIFECYCLE missing browser use turn route`,"
+                "{safe:e,sensitive:{}}),Error(`No Codex browser route captured for browser session ${e.conversationId} turn ${e.turnId}`)}"
+                "let n={conversationId:t.conversationId,windowId:t.windowId};return this.assertWindowAlive(n),"
+                "Y().info(`IAB_LIFECYCLE resolved browser use route`,{safe:{conversationId:t.conversationId,"
+                "ownerWebContentsId:t.ownerWebContentsId,turnId:t.turnId,windowId:t.windowId},sensitive:{}}),n}"
+            )
+            text = replace_once(text, current_old, current_new, "browser-use IAB route fallback")
             changed = True
 
     old = (
@@ -337,7 +461,19 @@ def patch_browser_use_iab_route_fallback(root: Path) -> bool:
         "this.delegate?.isWindowAlive(n.windowId)!==!0?!1:n.conversationId===t.conversationId&&n.windowId===t.windowId}"
     )
     if "e.conversationId===t.conversationId&&this.delegate?.isWindowAlive(t.windowId)===!0" not in text:
-        text = replace_once(text, old, new, "browser-use IAB canServe fallback")
+        if old in text:
+            text = replace_once(text, old, new, "browser-use IAB canServe fallback")
+        else:
+            old_current = (
+                "canServeTurnForBrowserRoute(e,t){let n=this.turnRoutes.get(XC(e));return n==null||"
+                "this.delegate?.isWindowAlive(n.windowId)!==!0?!1:n.conversationId===t.conversationId&&n.windowId===t.windowId}"
+            )
+            new_current = (
+                "canServeTurnForBrowserRoute(e,t){let n=this.turnRoutes.get(XC(e));return n==null?"
+                "e.conversationId===t.conversationId&&this.delegate?.isWindowAlive(t.windowId)===!0:"
+                "this.delegate?.isWindowAlive(n.windowId)!==!0?!1:n.conversationId===t.conversationId&&n.windowId===t.windowId}"
+            )
+            text = replace_once(text, old_current, new_current, "browser-use IAB canServe fallback")
         changed = True
 
     if changed:
