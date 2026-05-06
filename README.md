@@ -71,7 +71,7 @@ You can tell non-technical users this:
 ```text
 Install the official Codex desktop app first. Then install Python 3.11+ and Node.js LTS if you do not already have them.
 
-Download this repository as a ZIP, extract it, close Codex completely, open PowerShell in the extracted folder, and run:
+Download the latest release ZIP from the Releases page, extract it, close Codex completely, open PowerShell in the extracted folder, and run:
 
 Set-ExecutionPolicy -Scope Process Bypass
 .\install_windows.ps1
@@ -175,7 +175,7 @@ The patched copy is always created at:
 
 ## Easy Install
 
-1. Click **Code** -> **Download ZIP** on this GitHub repository.
+1. Open the latest GitHub Release and download `codex-desktop-patch-*.zip`.
 2. Extract the ZIP.
 3. Close Codex completely.
 4. Open PowerShell in the extracted folder.
