@@ -6,7 +6,7 @@ This repository does not include OpenAI binaries, `app.asar`, extracted applicat
 
 ## Latest Update
 
-The `/goal <objective>` flow has been updated so an existing local thread sets the thread goal and then starts the task from the same objective text. The installer also enables the local `goals` feature flag automatically in `%USERPROFILE%\.codex\config.toml`.
+The `/goal <objective>` flow has been updated so a local composer sets the thread goal and starts the task from the same objective text. The installer also enables the local `goals` feature flag automatically in `%USERPROFILE%\.codex\config.toml`.
 
 ## Screenshots
 
@@ -79,7 +79,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 When it finishes, launch:
 %LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe
 
-Use /goal your goal text in a Codex chat to set or replace the thread goal and start the task from that same objective. On the new-chat home screen, `/goal <objective>` queues that goal for the next local chat you start from the same project.
+Use /goal your goal text in a Codex chat to set or replace the thread goal and start the task from that same objective. On the new-chat home screen, `/goal <objective>` queues that goal, starts a new local chat from the same objective, and applies the queued goal to that chat.
 If you moved a project folder, right-click that project in the sidebar and choose Change project folder / 프로젝트 경로 변경. Select the new folder location. This keeps the chat history and retargets the cwd/workspace path Codex uses.
 
 If the installer cannot find Codex, find the official Codex.exe path and run the installer again with -SourceApp. For Store/AppX installs the path may look like:
@@ -102,7 +102,7 @@ To install and launch the patched app in one step:
 
 - `/goal <objective>` can be entered from the composer.
 - `/goal <objective>` in an existing local thread sets the thread goal and starts the task from the same objective text.
-- `/goal <objective>` appears on the new-chat home composer. If no thread exists yet, the goal is queued and applied to the next local chat created from that project.
+- `/goal <objective>` appears on the new-chat home composer. If no thread exists yet, the goal is queued, a new local chat starts from the same objective, and the queued goal is applied to that chat.
 - The installer enables the local Codex `goals` feature flag in `%USERPROFILE%\.codex\config.toml`.
 - Setting a new goal first clears the previous thread goal, so a completed or stale goal does not block the next one.
 - Local project sidebar menu gets **Change project folder** / **프로젝트 경로 변경**.
@@ -290,9 +290,8 @@ For `/goal` from the new-chat home screen:
 
 1. Select a local project.
 2. Type `/goal test goal from home`.
-3. Confirm the app queues the goal for the next chat.
-4. Send the first real task message in that project.
-5. Confirm the new chat starts and the queued goal is applied.
+3. Confirm the new chat starts from `test goal from home`.
+4. Confirm the queued goal is applied to that new chat.
 
 For moved project folders:
 
