@@ -98,7 +98,7 @@ function Set-CodexTomlFeatureFlag {
 
     if ($featuresMatch.Success) {
         $section = $featuresMatch.Value
-        $linePattern = "(?m)^\s*$([regex]::Escape($Name))\s*=\s*(true|false)\s*$"
+        $linePattern = "(?m)^[ `t]*$([regex]::Escape($Name))[ `t]*=[ `t]*(true|false)[ `t]*`r?$"
         if ($section -match $linePattern) {
             $section = [regex]::Replace($section, $linePattern, $line)
         } else {
