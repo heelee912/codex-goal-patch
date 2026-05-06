@@ -121,10 +121,10 @@ def patch_composer(root: Path) -> bool:
     )
     new = (
         "let i=Mn.getText(),__goal=W&&(n?.type===`local`||Jn===`local`)?__codexGoalParse(i):null;"
-        "if(__goal!=null){if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
-        "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),i=__goal}"
-        "else{Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
-        "I.get(Il).success(`Goal set`),i=__goal}catch(e){$o(e),Di();return}finally{Pt(!1)}}}"
+        "if(__goal!=null){Ln(i),Rn();if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
+        "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),Ro(),Di();return}"
+        "Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
+        "I.get(Il).success(`Goal set`),Ro(),C?.()}catch(e){$o(e)}finally{Pt(!1),Di()}return}"
         "let o=W&&n?.type===`local`?cU(i):null;"
         "if(o!=null){Ln(i),Rn(),Pt(!0);try{await Jo(o)&&(Ro(),C?.())}catch(e){qo(e)}finally{Pt(!1),Di()}return}"
     )
@@ -148,22 +148,31 @@ def patch_composer(root: Path) -> bool:
             new_current = new.replace("?cU(i):null;", "?lU(i):null;")
             text = replace_once(text, old_current, new_current, "composer submit parser insertion")
         changed = True
-    elif "i=__goal}else{Pt(!0);try" not in text:
-        old_goal_submit_set_only_current = old_goal_submit_set_only.replace("?cU(i):null;", "?lU(i):null;")
+    elif "i=__goal}else{Pt(!0);try" in text:
+        autostart_goal_submit = (
+            "let i=Mn.getText(),__goal=W&&(n?.type===`local`||Jn===`local`)?__codexGoalParse(i):null;"
+            "if(__goal!=null){if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
+            "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),i=__goal}"
+            "else{Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
+            "I.get(Il).success(`Goal set`),i=__goal}catch(e){$o(e),Di();return}finally{Pt(!1)}}}"
+            "let o=W&&n?.type===`local`?cU(i):null;"
+            "if(o!=null){Ln(i),Rn(),Pt(!0);try{await Jo(o)&&(Ro(),C?.())}catch(e){qo(e)}finally{Pt(!1),Di()}return}"
+        )
+        autostart_goal_submit_current = autostart_goal_submit.replace("?cU(i):null;", "?lU(i):null;")
         new_current = new.replace("?cU(i):null;", "?lU(i):null;")
-        if old_goal_submit_set_only_current in text:
+        if autostart_goal_submit_current in text:
             text = replace_once(
                 text,
-                old_goal_submit_set_only_current,
+                autostart_goal_submit_current,
                 new_current,
-                "composer goal submit autostart",
+                "composer goal submit real runtime restore",
             )
         else:
             text = replace_once(
                 text,
-                old_goal_submit_set_only,
+                autostart_goal_submit,
                 new,
-                "composer goal submit autostart",
+                "composer goal submit real runtime restore",
             )
         changed = True
     elif "Goal queued for next chat" not in text:
@@ -175,10 +184,10 @@ def patch_composer(root: Path) -> bool:
         )
         new_goal_submit = (
             "let i=Mn.getText(),__goal=W&&(n?.type===`local`||Jn===`local`)?__codexGoalParse(i):null;"
-            "if(__goal!=null){if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
-            "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),i=__goal}"
-            "else{Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
-            "I.get(Il).success(`Goal set`),i=__goal}catch(e){$o(e),Di();return}finally{Pt(!1)}}}"
+            "if(__goal!=null){Ln(i),Rn();if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
+            "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),Ro(),Di();return}"
+            "Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
+            "I.get(Il).success(`Goal set`),Ro(),C?.()}catch(e){$o(e)}finally{Pt(!1),Di()}return}"
         )
         text = replace_once(text, old_goal_submit, new_goal_submit, "composer goal submit home support")
         changed = True

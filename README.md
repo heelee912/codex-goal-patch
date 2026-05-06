@@ -6,7 +6,7 @@ This repository does not include OpenAI binaries, `app.asar`, extracted applicat
 
 ## Latest Update
 
-The `/goal <objective>` flow has been updated so a local composer sets the thread goal and starts the task from the same objective text. The installer also enables the local `goals` feature flag automatically in `%USERPROFILE%\.codex\config.toml`.
+The `/goal <objective>` flow now restores the real Codex goal runtime behavior. In a loaded local thread, the composer calls `thread/goal/set` with an active goal and does not fake startup by sending the objective as a normal one-turn message. Codex's goal runtime owns continuation turns until the goal is complete, paused, budget-limited, or stopped. The installer also enables the local `goals` feature flag automatically in `%USERPROFILE%\.codex\config.toml`.
 
 ## Screenshots
 
@@ -79,7 +79,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 When it finishes, launch:
 %LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe
 
-Use /goal your goal text in a Codex chat to set or replace the thread goal and start the task from that same objective. On the new-chat home screen, `/goal <objective>` queues that goal, starts a new local chat from the same objective, and applies the queued goal to that chat.
+Use /goal your goal text in a loaded local Codex chat to set or replace the active thread goal. Codex then uses its built-in goal continuation runtime to keep working until the goal is marked complete, paused, budget-limited, or stopped. On the new-chat home screen, `/goal <objective>` queues that goal for the next local chat you start from the same project.
 If you moved a project folder, right-click that project in the sidebar and choose Change project folder / 프로젝트 경로 변경. Select the new folder location. This keeps the chat history and retargets the cwd/workspace path Codex uses.
 
 If the installer cannot find Codex, find the official Codex.exe path and run the installer again with -SourceApp. For Store/AppX installs the path may look like:
@@ -101,8 +101,9 @@ To install and launch the patched app in one step:
 ## What This Fixes
 
 - `/goal <objective>` can be entered from the composer.
-- `/goal <objective>` in an existing local thread sets the thread goal and starts the task from the same objective text.
-- `/goal <objective>` appears on the new-chat home composer. If no thread exists yet, the goal is queued, a new local chat starts from the same objective, and the queued goal is applied to that chat.
+- `/goal <objective>` in an existing loaded local thread sets the active thread goal through Codex's `thread/goal/set` API and lets the real goal runtime start/continue work.
+- The patch does not send `/goal` objectives as ordinary one-turn chat messages.
+- `/goal <objective>` appears on the new-chat home composer. If no thread exists yet, the goal is queued and applied to the next local chat created from that project.
 - The installer enables the local Codex `goals` feature flag in `%USERPROFILE%\.codex\config.toml`.
 - Setting a new goal first clears the previous thread goal, so a completed or stale goal does not block the next one.
 - Local project sidebar menu gets **Change project folder** / **프로젝트 경로 변경**.
@@ -282,7 +283,7 @@ For `/goal`, in a local Codex thread:
 
 1. Type `/goal test goal one`.
 2. Confirm the app reports that the goal was set.
-3. Confirm the task starts from `test goal one`.
+3. Confirm Codex starts or continues through the goal runtime, not as a single normal user-message turn.
 4. Type `/goal test goal two`.
 5. The second goal should replace the previous one instead of failing because a goal already exists.
 
@@ -290,8 +291,9 @@ For `/goal` from the new-chat home screen:
 
 1. Select a local project.
 2. Type `/goal test goal from home`.
-3. Confirm the new chat starts from `test goal from home`.
-4. Confirm the queued goal is applied to that new chat.
+3. Confirm the app queues the goal for the next chat.
+4. Send the first real task message in that project.
+5. Confirm the new chat starts and the queued goal is applied.
 
 For moved project folders:
 
