@@ -81,7 +81,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 When it finishes, launch:
 %LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe
 
-Use /goal your goal text in a loaded local Codex chat to set or replace the active thread goal. Codex uses its built-in goal continuation runtime to start or continue work until the goal is marked complete, paused, budget-limited, or stopped. On the new-chat home screen, `/goal <objective>` queues that goal for the next local chat you start from the same project.
+Use /goal your goal text in a loaded local Codex chat to set or replace the active thread goal. For anything nontrivial, write the goal in a separate note or editor first, then paste it after `/goal`; keeping that source copy makes the original objective easier to review after Codex finishes the goal run. Codex uses its built-in goal continuation runtime to start or continue work until the goal is marked complete, paused, budget-limited, or stopped. On the new-chat home screen, `/goal <objective>` queues that goal for the next local chat you start from the same project.
 If you moved a project folder, right-click that project in the sidebar and choose Change project folder / 프로젝트 경로 변경. Select the new folder location. This keeps the chat history and retargets the cwd/workspace path Codex uses.
 
 If the installer cannot find Codex, find the official Codex.exe path and run the installer again with -SourceApp. For Store/AppX installs the path may look like:
@@ -288,6 +288,8 @@ For `/goal`, in a local Codex thread:
 3. Confirm Codex starts or continues through the goal runtime.
 4. Type `/goal test goal two`.
 5. The second goal should replace the previous one instead of failing because a goal already exists.
+
+For real work, draft the full goal somewhere outside Codex first and paste it into `/goal`. That keeps the exact objective easy to find later when reviewing a completed run.
 
 For `/goal` from the new-chat home screen:
 
