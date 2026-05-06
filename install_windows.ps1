@@ -563,6 +563,9 @@ Invoke-Python $python @($patchScript, "--fix-integrity", $targetApp)
 Write-Step "Configuring browser-use for patched node_repl"
 Update-CodexNodeReplBrowserUseConfig $targetApp
 
+Write-Step "Repairing goal runtime state database"
+Invoke-Python $python @($patchScript, "--repair-state-db")
+
 Write-Step "Cleaning temporary files"
 Remove-Item -Recurse -Force $extractDir -ErrorAction SilentlyContinue
 

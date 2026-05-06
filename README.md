@@ -259,6 +259,7 @@ npx --yes @electron/asar pack $extract "$dst\resources\app.asar"
 py -3 .\codex_desktop_patch.py --fix-integrity $dst
 
 .\install_windows.ps1 -RepairBrowserUseOnly -SourceApp $dst
+py -3 .\codex_desktop_patch.py --repair-state-db
 ```
 
 If `py -3` is not available, use `python`:
@@ -267,6 +268,7 @@ If `py -3` is not available, use `python`:
 python .\codex_desktop_patch.py $extract
 python .\codex_desktop_patch.py --fix-integrity $dst
 .\install_windows.ps1 -RepairBrowserUseOnly -SourceApp $dst
+python .\codex_desktop_patch.py --repair-state-db
 ```
 
 ## Run
@@ -356,6 +358,16 @@ Make sure you launched the patched copy, not the official app. Close all Codex p
 ```powershell
 & "$env:LOCALAPPDATA\OpenAI\CodexPatched\app\Codex.exe"
 ```
+
+### `/goal` says Goal set but does not start
+
+Install the latest patch with:
+
+```powershell
+.\install_windows.ps1 -Force
+```
+
+The installer repairs stale Codex goal-runtime state and re-applies the thread resume hook after setting the goal.
 
 ### Project path change does not appear
 

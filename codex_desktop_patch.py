@@ -4,6 +4,8 @@ from __future__ import annotations
 import sys
 import hashlib
 import shutil
+import sqlite3
+import time
 from pathlib import Path
 
 
@@ -121,10 +123,10 @@ def patch_composer(root: Path) -> bool:
     )
     new = (
         "let i=Mn.getText(),__goal=W&&(n?.type===`local`||Jn===`local`)?__codexGoalParse(i):null;"
-        "if(__goal!=null){if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
-        "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),i=__goal}"
-        "else{Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
-        "I.get(Il).success(`Goal set`),i=__goal}catch(e){$o(e),Di();return}finally{Pt(!1)}}}"
+        "if(__goal!=null){Ln(i),Rn();if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
+        "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),Ro(),Di();return}"
+        "Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
+        "I.get(Il).success(`Goal set`),Ro(),C?.()}catch(e){$o(e)}finally{Pt(!1),Di()}return}"
         "let o=W&&n?.type===`local`?cU(i):null;"
         "if(o!=null){Ln(i),Rn(),Pt(!0);try{await Jo(o)&&(Ro(),C?.())}catch(e){qo(e)}finally{Pt(!1),Di()}return}"
     )
@@ -148,22 +150,31 @@ def patch_composer(root: Path) -> bool:
             new_current = new.replace("?cU(i):null;", "?lU(i):null;")
             text = replace_once(text, old_current, new_current, "composer submit parser insertion")
         changed = True
-    elif "i=__goal}else{Pt(!0);try" not in text:
-        old_goal_submit_set_only_current = old_goal_submit_set_only.replace("?cU(i):null;", "?lU(i):null;")
+    elif "i=__goal}else{Pt(!0);try" in text:
+        autostart_goal_submit = (
+            "let i=Mn.getText(),__goal=W&&(n?.type===`local`||Jn===`local`)?__codexGoalParse(i):null;"
+            "if(__goal!=null){if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
+            "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),i=__goal}"
+            "else{Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
+            "I.get(Il).success(`Goal set`),i=__goal}catch(e){$o(e),Di();return}finally{Pt(!1)}}}"
+            "let o=W&&n?.type===`local`?cU(i):null;"
+            "if(o!=null){Ln(i),Rn(),Pt(!0);try{await Jo(o)&&(Ro(),C?.())}catch(e){qo(e)}finally{Pt(!1),Di()}return}"
+        )
+        autostart_goal_submit_current = autostart_goal_submit.replace("?cU(i):null;", "?lU(i):null;")
         new_current = new.replace("?cU(i):null;", "?lU(i):null;")
-        if old_goal_submit_set_only_current in text:
+        if autostart_goal_submit_current in text:
             text = replace_once(
                 text,
-                old_goal_submit_set_only_current,
+                autostart_goal_submit_current,
                 new_current,
-                "composer goal submit autostart",
+                "composer goal submit real runtime restore",
             )
         else:
             text = replace_once(
                 text,
-                old_goal_submit_set_only,
+                autostart_goal_submit,
                 new,
-                "composer goal submit autostart",
+                "composer goal submit real runtime restore",
             )
         changed = True
     elif "Goal queued for next chat" not in text:
@@ -175,10 +186,10 @@ def patch_composer(root: Path) -> bool:
         )
         new_goal_submit = (
             "let i=Mn.getText(),__goal=W&&(n?.type===`local`||Jn===`local`)?__codexGoalParse(i):null;"
-            "if(__goal!=null){if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
-            "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),i=__goal}"
-            "else{Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
-            "I.get(Il).success(`Goal set`),i=__goal}catch(e){$o(e),Di();return}finally{Pt(!1)}}}"
+            "if(__goal!=null){Ln(i),Rn();if(__goal.length===0){I.get(Il).danger(`Usage: /goal <objective>`),Di();return}"
+            "if(G==null){__codexGoalSetPending(__goal,hr),I.get(Il).success(`Goal queued for next chat`),Ro(),Di();return}"
+            "Pt(!0);try{await ya(`set-thread-goal`,{conversationId:G,objective:__goal,status:`active`,tokenBudget:null}),"
+            "I.get(Il).success(`Goal set`),Ro(),C?.()}catch(e){$o(e)}finally{Pt(!1),Di()}return}"
         )
         text = replace_once(text, old_goal_submit, new_goal_submit, "composer goal submit home support")
         changed = True
@@ -259,19 +270,29 @@ def patch_index(root: Path) -> bool:
         "index asset",
     )
     text = path.read_text(encoding="utf-8")
-    if '"set-thread-goal":dT' in text:
-        return False
 
     old = (
         '"set-latest-collaboration-mode-for-conversation":dT(async(e,{conversationId:t,collaborationMode:n})=>'
         "{await e.setLatestCollaborationModeForConversation(t,n)}),"
     )
-    new = old + (
+    goal_action_old = (
         '"set-thread-goal":dT(async(e,{conversationId:t,objective:n,status:r,tokenBudget:i})=>'
         "{try{await e.sendRequest(`thread/goal/clear`,{threadId:t})}catch{}"
         "await e.sendRequest(`thread/goal/set`,{threadId:t,objective:n,status:r??`active`,tokenBudget:i??null})}),"
     )
-    text = replace_once(text, old, new, "index app action insertion")
+    goal_action_new = (
+        '"set-thread-goal":dT(async(e,{conversationId:t,objective:n,status:r,tokenBudget:i})=>'
+        "{try{await e.sendRequest(`thread/goal/clear`,{threadId:t})}catch{}"
+        "await e.sendRequest(`thread/goal/set`,{threadId:t,objective:n,status:r??`active`,tokenBudget:i??null});"
+        "await e.sendRequest(`thread/resume`,{threadId:t})}),"
+    )
+
+    if goal_action_new in text:
+        return False
+    if goal_action_old in text:
+        text = replace_once(text, goal_action_old, goal_action_new, "index goal action resume upgrade")
+    else:
+        text = replace_once(text, old, old + goal_action_new, "index app action insertion")
 
     path.write_text(text, encoding="utf-8")
     return True
@@ -535,7 +556,44 @@ def patch_exe_integrity(exe_path: Path, asar_path: Path) -> bool:
     return True
 
 
+def repair_goal_state_db() -> bool:
+    db_path = Path.home() / ".codex" / "state_5.sqlite"
+    if not db_path.exists():
+        print(f"{db_path}: Codex state database not found")
+        return False
+
+    changed = False
+    with sqlite3.connect(db_path, timeout=10) as connection:
+        has_table = connection.execute(
+            "select 1 from sqlite_master where type = 'table' and name = 'backfill_state'"
+        ).fetchone()
+        if has_table is None:
+            print("Codex state database has no backfill_state table")
+            return False
+
+        rows = connection.execute("select id, status from backfill_state").fetchall()
+        stale_ids = [row_id for row_id, status in rows if status == "idle"]
+        if stale_ids:
+            now = int(time.time())
+            connection.executemany(
+                "update backfill_state set status = ?, updated_at = ? where id = ?",
+                [("complete", now, row_id) for row_id in stale_ids],
+            )
+            changed = True
+
+    print(
+        "repaired Codex goal runtime state database"
+        if changed
+        else "Codex goal runtime state database already current"
+    )
+    return changed
+
+
 def main() -> int:
+    if len(sys.argv) == 2 and sys.argv[1] == "--repair-state-db":
+        repair_goal_state_db()
+        return 0
+
     if len(sys.argv) == 3 and sys.argv[1] == "--fix-integrity":
         app_root = Path(sys.argv[2]).resolve()
         changed = patch_exe_integrity(app_root / "Codex.exe", app_root / "resources/app.asar")
@@ -550,6 +608,7 @@ def main() -> int:
     if len(sys.argv) != 2:
         print(
             "usage: codex_desktop_patch.py <extracted-app-asar-dir>\n"
+            "       codex_desktop_patch.py --repair-state-db\n"
             "       codex_desktop_patch.py --fix-integrity <electron-app-dir>\n"
             "       codex_desktop_patch.py --fix-integrity <codex-exe> <app-asar>",
             file=sys.stderr,
