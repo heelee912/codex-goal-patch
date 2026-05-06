@@ -8,7 +8,7 @@ This repository does not include OpenAI binaries, `app.asar`, extracted applicat
 
 The initial release added the missing desktop UI wiring for Codex goals: `/goal <objective>` appears in the local composer, calls Codex's persisted `thread/goal/set` API, and lets Codex's own goal runtime keep working until the goal is complete, paused, budget-limited, or stopped.
 
-This update keeps that real goal behavior and adds the install-time pieces needed on current Codex desktop builds: the installer enables `[features].goals = true` automatically in `%USERPROFILE%\.codex\config.toml`, preserves existing TOML sections, supports the current minified bundle names, resumes the thread after setting the goal so Codex's continuation runtime starts even when the desktop view had not loaded the thread yet, and restores already-patched copies that briefly used a one-turn "send the objective as a normal message" autostart workaround back to the real goal runtime path.
+This update keeps that real goal behavior and adds the install-time pieces needed on current Codex desktop builds: the installer enables `[features].goals = true` automatically in `%USERPROFILE%\.codex\config.toml`, preserves existing TOML sections, repairs stale local goal-runtime state, supports the current minified bundle names, and resumes the thread after setting the goal so Codex's continuation runtime starts even when the desktop view had not loaded the thread yet.
 
 ## Screenshots
 
@@ -81,7 +81,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 When it finishes, launch:
 %LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe
 
-Use /goal your goal text in a loaded local Codex chat to set or replace the active thread goal. No extra first message is needed there: Codex uses its built-in goal continuation runtime to start or continue work until the goal is marked complete, paused, budget-limited, or stopped. On the new-chat home screen, `/goal <objective>` queues that goal for the next local chat you start from the same project.
+Use /goal your goal text in a loaded local Codex chat to set or replace the active thread goal. Codex uses its built-in goal continuation runtime to start or continue work until the goal is marked complete, paused, budget-limited, or stopped. On the new-chat home screen, `/goal <objective>` queues that goal for the next local chat you start from the same project.
 If you moved a project folder, right-click that project in the sidebar and choose Change project folder / 프로젝트 경로 변경. Select the new folder location. This keeps the chat history and retargets the cwd/workspace path Codex uses.
 
 If the installer cannot find Codex, find the official Codex.exe path and run the installer again with -SourceApp. For Store/AppX installs the path may look like:
@@ -104,9 +104,9 @@ To install and launch the patched app in one step:
 
 - `/goal <objective>` can be entered from the composer.
 - `/goal <objective>` in an existing loaded local thread sets the active thread goal through Codex's `thread/goal/set` API and lets the real goal runtime start/continue work automatically.
-- The patch does not send `/goal` objectives as ordinary one-turn chat messages.
 - `/goal <objective>` appears on the new-chat home composer. If no thread exists yet, the goal is queued and applied to the next local chat created from that project.
 - The installer enables the local Codex `goals` feature flag in `%USERPROFILE%\.codex\config.toml`.
+- The installer repairs stale local goal-runtime backfill state that can block Codex from opening its goal continuation database.
 - Setting a new goal first clears the previous thread goal, so a completed or stale goal does not block the next one.
 - Local project sidebar menu gets **Change project folder** / **프로젝트 경로 변경**.
 - When a project folder was moved, the app can retarget existing chats to the new folder path instead of treating the old path as permanently missing.
@@ -285,7 +285,7 @@ For `/goal`, in a local Codex thread:
 
 1. Type `/goal test goal one`.
 2. Confirm the app reports that the goal was set.
-3. Confirm Codex starts or continues through the goal runtime, not as a single normal user-message turn.
+3. Confirm Codex starts or continues through the goal runtime.
 4. Type `/goal test goal two`.
 5. The second goal should replace the previous one instead of failing because a goal already exists.
 
