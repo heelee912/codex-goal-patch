@@ -28,6 +28,8 @@ When Codex itself updates, download the latest patch release again and run:
 
 Codex desktop updates can still break patch anchors because this project edits minified Electron bundles. The patch is designed to handle most small bundle-name and code-shape changes through multiple anchors and idempotent cleanup paths, but it intentionally fails closed when a required pattern cannot be matched exactly. A failed match means the patch script needs an update for that Codex build; do not force or hand-edit around it.
 
+Installer note: current releases repack `app.asar` to a new file and then replace the old archive. This matters because Electron's `asar pack` command can return success without overwriting an existing archive on some Windows/AppX copied files.
+
 ## Screenshots
 
 The screenshots show the important behaviors this patch is meant to provide:
@@ -297,8 +299,14 @@ npx --yes @electron/asar extract "$dst\resources\app.asar" $extract
 
 py -3 .\codex_desktop_patch.py $extract
 
-npx --yes @electron/asar pack $extract "$dst\resources\app.asar"
+$newAsar = "$dst\resources\app.asar.codexpatch-new"
+Remove-Item -Force $newAsar -ErrorAction SilentlyContinue
+npx --yes @electron/asar pack $extract $newAsar
+attrib -R "$dst\resources\app.asar"
+Remove-Item -Force "$dst\resources\app.asar"
+Move-Item -Force $newAsar "$dst\resources\app.asar"
 
+attrib -R "$dst\Codex.exe"
 py -3 .\codex_desktop_patch.py --fix-integrity $dst
 
 .\install_windows.ps1 -RepairBrowserUseOnly -SourceApp $dst

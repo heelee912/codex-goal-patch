@@ -79,6 +79,38 @@ function Invoke-Npx {
     }
 }
 
+function Set-PathWritable {
+    param([string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return
+    }
+
+    $item = Get-Item -LiteralPath $Path -Force
+    if (($item.Attributes -band [IO.FileAttributes]::ReadOnly) -ne 0) {
+        $item.Attributes = $item.Attributes -band (-bnot [IO.FileAttributes]::ReadOnly)
+    }
+}
+
+function Replace-AsarArchive {
+    param(
+        [string]$ExtractDir,
+        [string]$TargetAsar
+    )
+
+    $newAsar = "$TargetAsar.codexpatch-new"
+    if (Test-Path -LiteralPath $newAsar) {
+        Set-PathWritable $newAsar
+        Remove-Item -LiteralPath $newAsar -Force
+    }
+
+    Invoke-Npx @("--yes", "@electron/asar", "pack", $ExtractDir, $newAsar)
+
+    Set-PathWritable $TargetAsar
+    Remove-Item -LiteralPath $TargetAsar -Force
+    Move-Item -LiteralPath $newAsar -Destination $TargetAsar -Force
+}
+
 function ConvertTo-TomlLiteral {
     param([string]$Value)
 
@@ -555,9 +587,10 @@ Write-Step "Applying /goal and project path patch"
 Invoke-Python $python @($patchScript, $extractDir)
 
 Write-Step "Repacking app.asar"
-Invoke-Npx @("--yes", "@electron/asar", "pack", $extractDir, $targetAsar)
+Replace-AsarArchive -ExtractDir $extractDir -TargetAsar $targetAsar
 
 Write-Step "Updating Electron ASAR integrity"
+Set-PathWritable $targetExe
 Invoke-Python $python @($patchScript, "--fix-integrity", $targetApp)
 
 Write-Step "Configuring browser-use for patched node_repl"
