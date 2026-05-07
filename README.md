@@ -16,12 +16,13 @@ In localized Codex builds, the rendered implementation message can appear as the
 
 ## Screenshots
 
-The screenshots show the four important behaviors this patch is meant to provide:
+The screenshots show the important behaviors this patch is meant to provide:
 
 1. **Project path menu**: the local project sidebar menu includes **Change project folder** / **프로젝트 경로 변경**. Use this when a project folder moved and you want existing chats to keep using the new `cwd`.
 2. **`cwd` retarget proof**: after using the project path action, the same chat reports a different current working directory, showing that the saved workspace path changed from the old folder to the new one.
 3. **`/goal` slash command**: typing `/goal` in the composer opens the Goal slash command entry.
 4. **Goal set confirmation**: after submitting `/goal <objective>`, the app shows **Goal set**, confirming that the thread goal was accepted.
+5. **Plan Mode Set as Goal**: after choosing **Set as Goal** on a completed plan, Codex starts the normal plan implementation path and the built-in Goal runtime performs the completion audit.
 
 
 
@@ -47,6 +48,14 @@ The screenshots show the four important behaviors this patch is meant to provide
 
 
 ```The "Goal set" toast confirms that the goal was applied.```
+
+
+
+<img width="770" height="788" alt="Plan Mode Set as Goal run with implementation and completion audit" src="screenshots/plan-mode-set-as-goal.png" />
+
+
+
+```Plan Mode's Set as Goal option starts implementation, then Goal continuation audits and completes the objective.```
 
 
 
