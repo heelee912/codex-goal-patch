@@ -14,6 +14,20 @@ The Plan Mode follow-up prompt now also has a **Set as Goal** option. It does no
 
 In localized Codex builds, the rendered implementation message can appear as the local "Implement plan" label, such as `계획 적용하기` in Korean. That is only display text; the actual model input still uses Codex's normal `PLEASE IMPLEMENT THIS PLAN:` wrapper plus the completed plan content.
 
+## Release Model
+
+Releases are cumulative. Install the latest release ZIP only; you do not need to apply older patch releases in order. The installer copies the current official Codex desktop app into `%LOCALAPPDATA%\OpenAI\CodexPatched\app` and applies every supported patch in this repository to that copy.
+
+When Codex itself updates, download the latest patch release again and run:
+
+```powershell
+.\install_windows.ps1 -Force
+```
+
+`-Force` replaces the existing `CodexPatched` copy with a fresh copy of the current official app, then reapplies the latest cumulative patch. Your official Codex install remains untouched.
+
+Codex desktop updates can still break patch anchors because this project edits minified Electron bundles. The patch is designed to handle most small bundle-name and code-shape changes through multiple anchors and idempotent cleanup paths, but it intentionally fails closed when a required pattern cannot be matched exactly. A failed match means the patch script needs an update for that Codex build; do not force or hand-edit around it.
+
 ## Screenshots
 
 The screenshots show the important behaviors this patch is meant to provide:
@@ -173,6 +187,7 @@ Before writing changes, it creates a backup under:
 - This repository is source-only. It does not redistribute Codex binaries or a prepatched app.
 - Do not publish or redistribute `Codex.exe`, `app.asar`, extracted app bundles, `.codex` profiles, auth files, logs, or caches.
 - The patched app is installed as a separate copy named `CodexPatched`. Your official Codex install remains available.
+- Latest releases are cumulative. Use the newest release ZIP only; do not apply old releases one by one.
 - Codex updates can change the minified bundle names and code patterns. If the script cannot find exactly one match, it stops instead of guessing.
 - Patch a copied app directory, not your only Codex install.
 - The project path action does not move folders on disk. It only updates Codex's saved workspace path for matching local chats.
@@ -219,6 +234,8 @@ If you already installed a patched copy and want to replace it:
 ```powershell
 .\install_windows.ps1 -Force
 ```
+
+Use `-Force` after Codex desktop updates too. It rebuilds the patched copy from the latest official app plus the current cumulative patch; there is no sequential patch chain.
 
 If you want the installer to open the patched app when it finishes:
 
