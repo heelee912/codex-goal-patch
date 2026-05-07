@@ -22,7 +22,8 @@ The screenshots show the important behaviors this patch is meant to provide:
 2. **`cwd` retarget proof**: after using the project path action, the same chat reports a different current working directory, showing that the saved workspace path changed from the old folder to the new one.
 3. **`/goal` slash command**: typing `/goal` in the composer opens the Goal slash command entry.
 4. **Goal set confirmation**: after submitting `/goal <objective>`, the app shows **Goal set**, confirming that the thread goal was accepted.
-5. **Plan Mode Set as Goal**: after choosing **Set as Goal** on a completed plan, Codex starts the normal plan implementation path and the built-in Goal runtime performs the completion audit.
+5. **Plan Mode Set as Goal choice**: a completed Plan Mode proposal shows **Set as Goal** beside the normal implementation choice.
+6. **Plan Mode Goal run**: after choosing **Set as Goal**, Codex starts the normal plan implementation path and the built-in Goal runtime performs the completion audit.
 
 
 
@@ -48,6 +49,14 @@ The screenshots show the important behaviors this patch is meant to provide:
 
 
 ```The "Goal set" toast confirms that the goal was applied.```
+
+
+
+<img width="747" height="268" alt="Plan Mode proposal showing Set as Goal as the second action" src="screenshots/plan-mode-set-as-goal-choice.png" />
+
+
+
+```A completed plan can be applied normally or promoted to a Goal with Set as Goal.```
 
 
 
