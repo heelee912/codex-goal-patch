@@ -227,6 +227,119 @@ def patch_composer(root: Path) -> bool:
         )
         changed = True
 
+    if "Set as Goal" not in text:
+        old_plan_submit = (
+            "l=e=>{c.get(mc).log({eventName:`codex_request_input_submitted`,metadata:{kind:`implement_plan`,question_count:1}});"
+            "let t=e[0],s=t?.selectedOptionId??null;if(ya(`remove-plan-implementation-request`,{conversationId:n,turnId:r.turnId}),s===DH)"
+            "{o(`default`),i(`${ta}\\n${r.planContent}`,a.find(MH));return}"
+            "let l=t?.freeformText?.trim();l==null||l.length===0||i(l)}"
+        )
+        new_plan_submit = (
+            "l=async e=>{c.get(mc).log({eventName:`codex_request_input_submitted`,metadata:{kind:`implement_plan`,question_count:1}});"
+            "let t=e[0],s=t?.selectedOptionId??null,u=__codexGoalParse(t?.freeformText?.trim()??``),d=a.find(MH);"
+            "if(s===DH)return await ya(`remove-plan-implementation-request`,{conversationId:n,turnId:r.turnId}),"
+            "o(`default`),d&&await ya(`set-latest-collaboration-mode-for-conversation`,{conversationId:n,collaborationMode:d}),i(`${ta}\\n${r.planContent}`,d);"
+            "if(s===`g`||u!=null)return await ya(`remove-plan-implementation-request`,{conversationId:n,turnId:r.turnId}),"
+            "o(`default`),d&&await ya(`set-latest-collaboration-mode-for-conversation`,{conversationId:n,collaborationMode:d}),"
+            "await ya(`set-thread-goal`,{conversationId:n,objective:s===`g`?r.planContent:u,status:`active`,tokenBudget:null,resume:!1}),"
+            "i(`${ta}\\n${r.planContent}`,d);"
+            "let l=t?.freeformText?.trim();l==null||l.length===0||i(l)}"
+        )
+        text = replace_once(text, old_plan_submit, new_plan_submit, "composer plan goal submit")
+        text = replace_once(
+            text,
+            "h=[{id:DH,value:m}],t[16]=m,t[17]=h",
+            "h=[{id:DH,value:m},{id:`g`,value:`Set as Goal`}],t[16]=m,t[17]=h",
+            "composer plan goal option",
+        )
+        changed = True
+    else:
+        old_goal_submit = (
+            "let l=t?.freeformText?.trim();if(s===`g`||__codexGoalParse(l??``)!=null)return "
+            "await ya(`set-thread-goal`,{conversationId:n,objective:r.planContent,status:`active`,tokenBudget:null}),"
+            "await ya(`remove-plan-implementation-request`,{conversationId:n,turnId:r.turnId}),o(`default`);"
+            "l==null||l.length===0||i(l)"
+        )
+        new_goal_submit = (
+            "let l=t?.freeformText?.trim(),d=__codexGoalParse(l??``);if(s===`g`||d!=null)return "
+            "await ya(`remove-plan-implementation-request`,{conversationId:n,turnId:r.turnId}),"
+            "o(`default`),u&&await ya(`set-latest-collaboration-mode-for-conversation`,{conversationId:n,collaborationMode:u}),"
+            "await ya(`set-thread-goal`,{conversationId:n,objective:s===`g`?r.planContent:d,status:`active`,tokenBudget:null,resume:!1}),"
+            "i(`${ta}\\n${r.planContent}`,u);"
+            "l==null||l.length===0||i(l)"
+        )
+        if old_goal_submit in text:
+            text = replace_once(text, old_goal_submit, new_goal_submit, "composer existing plan goal submit upgrade")
+            changed = True
+        else:
+            current_goal_submit = (
+                "let l=t?.freeformText?.trim(),d=__codexGoalParse(l??``);if(s===`g`||d!=null)return "
+                "o(`default`),u&&await ya(`set-latest-collaboration-mode-for-conversation`,{conversationId:n,collaborationMode:u}),"
+                "await ya(`set-thread-goal`,{conversationId:n,objective:s===`g`?r.planContent:d,status:`active`,tokenBudget:null}),"
+                "await ya(`remove-plan-implementation-request`,{conversationId:n,turnId:r.turnId});"
+                "l==null||l.length===0||i(l)"
+            )
+            if current_goal_submit in text:
+                text = replace_once(text, current_goal_submit, new_goal_submit, "composer existing plan goal submit remove-first upgrade")
+                changed = True
+            else:
+                current_goal_submit_remove_first = (
+                    "let l=t?.freeformText?.trim(),d=__codexGoalParse(l??``);if(s===`g`||d!=null)return "
+                    "await ya(`remove-plan-implementation-request`,{conversationId:n,turnId:r.turnId}),"
+                    "o(`default`),u&&await ya(`set-latest-collaboration-mode-for-conversation`,{conversationId:n,collaborationMode:u}),"
+                    "await ya(`set-thread-goal`,{conversationId:n,objective:s===`g`?r.planContent:d,status:`active`,tokenBudget:null}),"
+                    "void 0;"
+                    "l==null||l.length===0||i(l)"
+                )
+                if current_goal_submit_remove_first in text:
+                    text = replace_once(
+                        text,
+                        current_goal_submit_remove_first,
+                        new_goal_submit,
+                        "composer existing plan goal submit autostart upgrade",
+                    )
+                    changed = True
+
+        old_goal_onselect = (
+            "{id:`g`,value:`Set as Goal`,onSelect:async()=>{await ya(`set-thread-goal`,{conversationId:n,objective:r.planContent,status:`active`,tokenBudget:null}),"
+            "await ya(`remove-plan-implementation-request`,{conversationId:n,turnId:r.turnId}),o(`default`)}}"
+        )
+        new_goal_onselect = (
+            "{id:`g`,value:`Set as Goal`,onSelect:async()=>{let e=a.find(MH);"
+            "await ya(`remove-plan-implementation-request`,{conversationId:n,turnId:r.turnId}),o(`default`),"
+            "e&&await ya(`set-latest-collaboration-mode-for-conversation`,{conversationId:n,collaborationMode:e}),"
+            "await ya(`set-thread-goal`,{conversationId:n,objective:r.planContent,status:`active`,tokenBudget:null,resume:!1}),"
+            "i(`${ta}\\n${r.planContent}`,e)}}"
+        )
+        if old_goal_onselect in text:
+            text = replace_once(text, old_goal_onselect, new_goal_onselect, "composer existing plan goal option upgrade")
+            changed = True
+        else:
+            current_goal_onselect = (
+                "{id:`g`,value:`Set as Goal`,onSelect:async()=>{let e=a.find(MH);o(`default`),"
+                "e&&await ya(`set-latest-collaboration-mode-for-conversation`,{conversationId:n,collaborationMode:e}),"
+                "await ya(`set-thread-goal`,{conversationId:n,objective:r.planContent,status:`active`,tokenBudget:null}),"
+                "await ya(`remove-plan-implementation-request`,{conversationId:n,turnId:r.turnId})}}"
+            )
+            if current_goal_onselect in text:
+                text = replace_once(text, current_goal_onselect, new_goal_onselect, "composer existing plan goal option remove-first upgrade")
+                changed = True
+            else:
+                current_goal_onselect_remove_first = (
+                    "{id:`g`,value:`Set as Goal`,onSelect:async()=>{let e=a.find(MH);"
+                    "await ya(`remove-plan-implementation-request`,{conversationId:n,turnId:r.turnId}),o(`default`),"
+                    "e&&await ya(`set-latest-collaboration-mode-for-conversation`,{conversationId:n,collaborationMode:e}),"
+                    "await ya(`set-thread-goal`,{conversationId:n,objective:r.planContent,status:`active`,tokenBudget:null})}}"
+                )
+                if current_goal_onselect_remove_first in text:
+                    text = replace_once(
+                        text,
+                        current_goal_onselect_remove_first,
+                        new_goal_onselect,
+                        "composer existing plan goal option autostart upgrade",
+                    )
+                    changed = True
+
     if "__codexGoalApplyPending(p,u)" not in text:
         old_pending = "p=await q({attachments:Ka([...f.attachments??[],...s]),baseParams:f,hostId:o});wI(D,p,G,d.config),Xu(K,p,o,d.agentMode),"
         new_pending = (
@@ -259,22 +372,79 @@ def patch_index(root: Path) -> bool:
         "index asset",
     )
     text = path.read_text(encoding="utf-8")
-    if '"set-thread-goal":dT' in text:
-        return False
+    changed = False
+
+    goal_helpers = (
+        "function __codexGoalObjectiveText(e){if(typeof e!=`string`)return``;"
+        "let t=String(e).replace(/\\r/g,``),n=/`\\s*\\/goal\\s+([^`]+?)\\s*`/i.exec(t);"
+        "n||(n=/^\\s*\\/goal\\s+([^\\n`]+)/im.exec(t));let r=(n?.[1]??t).trim(),i=/^\\s*\\/goal(?:\\s+([\\s\\S]*?))?\\s*$/.exec(r);"
+        "return i&&(r=i[1]?.trim()??``),r.length>1800?r.slice(0,1800).trim():r}"
+        "function __codexGoalExtractProposedPlan(e){let t=/<proposed_plan>\\s*([\\s\\S]*?)\\s*<\\/proposed_plan>/i.exec(String(e??``));return t?.[1]?.trim()??``}"
+        "function __codexGoalObjectiveFromItem(e){if(!e)return``;let t=e.type,n;switch(t){"
+        "case`planImplementation`:case`plan-implementation`:return __codexGoalObjectiveText(e.planContent);"
+        "case`plan`:return __codexGoalObjectiveText(e.text);case`proposed-plan`:return __codexGoalObjectiveText(e.content);"
+        "case`agentMessage`:case`assistantMessage`:case`assistant-message`:return __codexGoalObjectiveText(__codexGoalExtractProposedPlan(e.text??e.content??e.message))}"
+        "return e.item?__codexGoalObjectiveFromItem(e.item):``}"
+        "function __codexGoalObjectiveFromConversation(e){let t=e?.requests??[];for(let e=t.length-1;e>=0;--e){let n=t[e];"
+        "if(n?.method===`item/plan/requestImplementation`){let e=__codexGoalObjectiveText(n.params?.planContent);if(e)return e}}"
+        "let n=e?.turns??[];for(let e=n.length-1;e>=0;--e){let t=n[e]?.items??[];for(let e=t.length-1;e>=0;--e){let n=__codexGoalObjectiveFromItem(t[e]);if(n)return n}}return``}"
+    )
+    bad_goal_mode_helpers = (
+        "function __codexGoalDefaultMode(e){return e==null?null:{mode:`default`,settings:{...e.settings,developer_instructions:null}}}"
+        "function __codexGoalIsPlanConversation(e){return e?.latestCollaborationMode?.mode===`plan`||e?.turns?.at?.(-1)?.params?.collaborationMode?.mode===`plan`}"
+    )
+
+    if "__codexGoalObjectiveText" not in text:
+        text = replace_once(text, "var hT=12e4,gT=", goal_helpers + "var hT=12e4,gT=", "index goal objective helpers")
+        changed = True
+    if bad_goal_mode_helpers in text:
+        text = replace_once(text, bad_goal_mode_helpers, "", "index remove obsolete goal mode helpers")
+        changed = True
 
     old = (
         '"set-latest-collaboration-mode-for-conversation":dT(async(e,{conversationId:t,collaborationMode:n})=>'
         "{await e.setLatestCollaborationModeForConversation(t,n)}),"
     )
-    new = old + (
+    set_thread_goal = (
         '"set-thread-goal":dT(async(e,{conversationId:t,objective:n,status:r,tokenBudget:i})=>'
         "{try{await e.sendRequest(`thread/goal/clear`,{threadId:t})}catch{}"
         "await e.sendRequest(`thread/goal/set`,{threadId:t,objective:n,status:r??`active`,tokenBudget:i??null})}),"
     )
-    text = replace_once(text, old, new, "index app action insertion")
+    new_set_thread_goal = (
+        '"set-thread-goal":dT(async(e,{conversationId:t,objective:n,status:r,tokenBudget:i,resume:a})=>'
+        "{let o=__codexGoalObjectiveText(n)||__codexGoalObjectiveFromConversation(e.getConversation?.(t));"
+        "if(!o)throw Error(`Cannot set thread goal without an objective.`);"
+        "try{await e.sendRequest(`thread/goal/clear`,{threadId:t})}catch{}"
+        "await e.sendRequest(`thread/goal/set`,{threadId:t,objective:o,status:r??`active`,tokenBudget:i??null});"
+        "a===!1||await e.sendRequest(`thread/resume`,{threadId:t})}),"
+    )
+    bad_kickoff_set_thread_goal = (
+        '"set-thread-goal":dT(async(e,{conversationId:t,objective:n,status:r,tokenBudget:i,resume:a})=>'
+        "{let o=__codexGoalObjectiveText(n)||__codexGoalObjectiveFromConversation(e.getConversation?.(t));"
+        "if(!o)throw Error(`Cannot set thread goal without an objective.`);"
+        "let s=e.getConversation?.(t),c=__codexGoalDefaultMode(s?.latestCollaborationMode);"
+        "try{await e.sendRequest(`thread/goal/clear`,{threadId:t})}catch{}"
+        "await e.sendRequest(`thread/goal/set`,{threadId:t,objective:o,status:r??`active`,tokenBudget:i??null});"
+        "if(a===!1)return;"
+        "if(__codexGoalIsPlanConversation(s)){try{c&&await e.setLatestCollaborationModeForConversation(t,c)}catch{}"
+        "try{await na(e,{conversationId:t,model:null,reasoningEffort:null,workspaceRoots:[e.getConversationCwd(t)??`/`],collaborationMode:c})}catch{}"
+        "try{await ua(e,t,{input:[{type:`text`,text:`Continue working toward this active Goal:\\n\\n${o}`,text_elements:[]}],collaborationMode:c})}"
+        "catch(n){await e.sendRequest(`thread/resume`,{threadId:t})}return}"
+        "await e.sendRequest(`thread/resume`,{threadId:t})}),"
+    )
+    if '"set-thread-goal":dT' not in text:
+        text = replace_once(text, old, old + new_set_thread_goal, "index app action insertion")
+        changed = True
+    elif set_thread_goal in text:
+        text = replace_once(text, set_thread_goal, new_set_thread_goal, "index app action goal objective upgrade")
+        changed = True
+    elif bad_kickoff_set_thread_goal in text:
+        text = replace_once(text, bad_kickoff_set_thread_goal, new_set_thread_goal, "index app action remove plan-mode kickoff")
+        changed = True
 
-    path.write_text(text, encoding="utf-8")
-    return True
+    if changed:
+        path.write_text(text, encoding="utf-8")
+    return changed
 
 
 CWD_RETARGET_MAIN_METHODS = r"""__codexCwdNorm(e){return String(e??``).trim().replace(/^\\\\\?\\/,"").replace(/\//g,`\\`).replace(/\\+$/g,``).toLowerCase()}__codexCwdReplacement(e,t){return String(e??``).startsWith(`\\\\?\\`)?`\\\\?\\${t}`:t}__codexCwdStatePath(){return i.join(i.dirname(this.globalState.getStateFilePath()),`state_5.sqlite`)}__codexCwdSidecars(e){return[``, `-wal`, `-shm`].map(t=>`${e}${t}`).filter(e=>o.existsSync(e))}__codexCwdDatabase(){let e=require(`better-sqlite3`);return new e(this.__codexCwdStatePath())}__codexCwdLoadThreads(e){let t=this.__codexCwdDatabase();try{return t.prepare(`select id,cwd,rollout_path,title from threads`).all().filter(t=>this.__codexCwdNorm(t.cwd)===this.__codexCwdNorm(e))}finally{t.close()}}__codexCwdUpdateThreads(e,t){let n=this.__codexCwdDatabase();try{let r=n.prepare(`update threads set cwd = ? where id = ? and cwd = ?`),i=n.transaction(()=>{for(let n of e)r.run(this.__codexCwdReplacement(n.cwd,t),n.id,n.cwd)});i()}finally{n.close()}}__codexCwdBackup(e){let t=i.dirname(this.globalState.getStateFilePath()),n=i.join(t,`backups`,`cwd-retarget-${Date.now()}`);o.mkdirSync(n,{recursive:!0});let r=[...this.__codexCwdSidecars(this.__codexCwdStatePath()),this.globalState.getStateFilePath(),...e.map(e=>String(e.rollout_path??``).replace(/^\\\\\?\\/,""))];for(let e of r){if(!e||!o.existsSync(e))continue;try{if(!o.statSync(e).isFile())continue;let t=e.replace(/^[A-Za-z]:[\\/]/,e=>`${e[0]}__/`).replace(/[<>:"|?*]/g,`_`).replace(/[\\/]+/g,`__`);o.copyFileSync(e,i.join(n,t))}catch(e){X().warning(`Failed to back up cwd retarget file`,{safe:{},sensitive:{error:e}})}}return n}__codexCwdRewriteSessionFiles(e,t,n){let r=0;for(let a of e){let e=String(a.rollout_path??``).replace(/^\\\\\?\\/,"");if(!e||!o.existsSync(e))continue;let s=o.readFileSync(e,`utf8`),c=s.split(/(\r?\n)/),l=!1;for(let e=0;e<c.length;e+=2){let i=c[e];if(!i)continue;try{let a=JSON.parse(i),o=a?.payload?.cwd;typeof o==`string`&&this.__codexCwdNorm(o)===this.__codexCwdNorm(t)&&(a.payload.cwd=this.__codexCwdReplacement(o,n),c[e]=JSON.stringify(a),l=!0,r++)}catch{}}l&&o.writeFileSync(e,c.join(``),`utf8`)}return r}__codexCwdReplaceJson(e,t,n){if(typeof e==`string`)return this.__codexCwdNorm(e)===this.__codexCwdNorm(t)?{value:this.__codexCwdReplacement(e,n),changed:1}:{value:e,changed:0};if(Array.isArray(e)){let r=0,i=e.map(e=>{let a=this.__codexCwdReplaceJson(e,t,n);return r+=a.changed,a.value});return{value:i,changed:r}}if(e&&typeof e==`object`){let r=0,i={};for(let[a,o]of Object.entries(e)){let e=a;if(this.__codexCwdNorm(a)===this.__codexCwdNorm(t)&&(e=this.__codexCwdReplacement(a,n),r++),o!==void 0){let a=this.__codexCwdReplaceJson(o,t,n);r+=a.changed,i[e]=a.value}}return{value:i,changed:r}}return{value:e,changed:0}}__codexCwdRetargetGlobal(t,n){let r=0;for(let i of[e.Rt.WORKSPACE_ROOT_OPTIONS,e.Rt.ACTIVE_WORKSPACE_ROOTS,e.Rt.PROJECT_ORDER,e.Rt.PINNED_PROJECT_IDS,e.Rt.WORKSPACE_ROOT_LABELS,e.Rt.OPEN_IN_TARGET_PREFERENCES,e.Rt.SIDEBAR_PROJECT_THREAD_ORDERS,e.Rt.THREAD_WORKSPACE_ROOT_HINTS])this.globalState.update(i,e=>{let i=this.__codexCwdReplaceJson(e,t,n);return r+=i.changed,i.changed?i.value:e??void 0});return r}async __codexCwdRetargetWorkspaceRootOption(e,t){try{if(this.host.id!==`local`)return;let n=re(t,this.host),r=await this.pickLocalWorkspaceRoot();if(r==null||this.__codexCwdNorm(n)===this.__codexCwdNorm(r))return;let i=this.__codexCwdLoadThreads(n),a=this.__codexCwdBackup(i);this.__codexCwdUpdateThreads(i,r);let o=this.__codexCwdRewriteSessionFiles(i,n,r),s=this.__codexCwdRetargetGlobal(n,r);await this.globalState.flush?.(),e.send(H,{type:`workspace-root-options-updated`}),e.send(H,{type:`active-workspace-roots-updated`}),e.send(H,{type:`navigate-to-route`,path:`/`,state:{focusComposerNonce:Date.now()}}),X().info(`Retargeted workspace root`,{safe:{threadCount:i.length,sessionCwdCount:o,globalStateCount:s},sensitive:{oldRoot:n,newRoot:r,backup:a}})}catch(n){X().error(`Failed to retarget workspace root`,{safe:{},sensitive:{error:n,root:t}})}}"""

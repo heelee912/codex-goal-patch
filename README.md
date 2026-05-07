@@ -10,6 +10,8 @@ The initial release added the missing desktop UI wiring for Codex goals: `/goal 
 
 This update keeps that real goal behavior and adds the install-time pieces needed on current Codex desktop builds: the installer enables `[features].goals = true` automatically in `%USERPROFILE%\.codex\config.toml`, preserves existing TOML sections, repairs stale local goal-runtime state, supports the current minified bundle names, and resumes the thread after setting the goal so Codex's continuation runtime starts even when the desktop view had not loaded the thread yet.
 
+The Plan Mode follow-up prompt now also has a **Set as Goal** option. It does not hardcode any objective: by default the completed plan itself becomes the Goal objective, and when the plan includes an explicit ``/goal ...`` draft the patched app extracts that objective instead. Normal **Yes, implement this plan** behavior is unchanged, and arbitrary freeform replies are not treated as Goal unless they are explicitly written as `/goal <objective>`.
+
 ## Screenshots
 
 The screenshots show the four important behaviors this patch is meant to provide:
@@ -82,6 +84,7 @@ When it finishes, launch:
 %LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe
 
 Use /goal your goal text in a loaded local Codex chat to set or replace the active thread goal. For anything nontrivial, write the goal in a separate note or editor first, then paste it after `/goal`; keeping that source copy makes the original objective easier to review after Codex finishes the goal run. Codex uses its built-in goal continuation runtime to start or continue work until the goal is marked complete, paused, budget-limited, or stopped. On the new-chat home screen, `/goal <objective>` queues that goal for the next local chat you start from the same project.
+After Plan Mode finishes a plan, you can choose **Set as Goal** instead of **Yes, implement this plan**. The patched app sets the completed plan as the Goal objective, starts implementation through Codex's normal plan-implementation path, and then lets the built-in Goal runtime continue/audit the work. If the plan contains a `/goal <objective>` draft, that explicit objective is used instead.
 If you moved a project folder, right-click that project in the sidebar and choose Change project folder / 프로젝트 경로 변경. Select the new folder location. This keeps the chat history and retargets the cwd/workspace path Codex uses.
 
 If the installer cannot find Codex, find the official Codex.exe path and run the installer again with -SourceApp. For Store/AppX installs the path may look like:
@@ -105,6 +108,9 @@ To install and launch the patched app in one step:
 - `/goal <objective>` can be entered from the composer.
 - `/goal <objective>` in an existing loaded local thread sets the active thread goal through Codex's `thread/goal/set` API and lets the real goal runtime start/continue work automatically.
 - `/goal <objective>` appears on the new-chat home composer. If no thread exists yet, the goal is queued and applied to the next local chat created from that project.
+- Plan Mode's completed-plan prompt includes **Set as Goal** in addition to the normal implementation choice.
+- **Set as Goal** uses the completed plan as the Goal objective, extracts an explicit `/goal <objective>` from the plan when present, starts the normal plan implementation path, and lets Codex's built-in Goal runtime continue/audit the work.
+- Other/freeform Plan Mode replies remain normal user input unless the user explicitly types `/goal <objective>`.
 - The installer enables the local Codex `goals` feature flag in `%USERPROFILE%\.codex\config.toml`.
 - The installer repairs stale local goal-runtime backfill state that can block Codex from opening its goal continuation database.
 - Setting a new goal first clears the previous thread goal, so a completed or stale goal does not block the next one.
