@@ -12,6 +12,8 @@ This update keeps that real goal behavior and adds the install-time pieces neede
 
 The Plan Mode follow-up prompt now also has a **Set as Goal** option. It does not hardcode any objective: by default the completed plan itself becomes the Goal objective, and when the plan includes an explicit ``/goal ...`` draft the patched app extracts that objective instead. Normal **Yes, implement this plan** behavior is unchanged, and arbitrary freeform replies are not treated as Goal unless they are explicitly written as `/goal <objective>`.
 
+In localized Codex builds, the rendered implementation message can appear as the local "Implement plan" label, such as `계획 적용하기` in Korean. That is only display text; the actual model input still uses Codex's normal `PLEASE IMPLEMENT THIS PLAN:` wrapper plus the completed plan content.
+
 ## Screenshots
 
 The screenshots show the four important behaviors this patch is meant to provide:
