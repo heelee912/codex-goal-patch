@@ -1,0 +1,16 @@
+{
+  "release": "2026-05-08-public",
+  "source": "latest-installed-official-codex-app",
+  "target": "C:/Users/USER/AppData/Local/OpenAI/CodexPatched/app",
+  "features": [
+    "goal_slash_visibility",
+    "plan_after_goal",
+    "browser_mini_window",
+    "official_app_copy"
+  ],
+  "excluded_private_features": [
+    "people_browser_client_hardlink",
+    "turn_completed_cyber_policy_normalization",
+    "private_runtime_payloads"
+  ]
+}

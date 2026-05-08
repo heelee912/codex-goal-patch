@@ -1,4 +1,41 @@
-# Codex Desktop Patch
+# CodexPatched Public Patch
+
+Public release package for the current Codex Desktop app.
+
+This package starts from the latest installed official Codex app and patches only public UI behavior:
+
+- show the official `/goal` slash command in the composer popup when `[features] goals = true`
+- add `Set as Goal` to the plan implementation prompt
+- add an in-app browser address-bar button that opens the current browser page in a mini window
+- keep the Microsoft Store Codex app untouched by patching a separate `CodexPatched` copy
+
+Private runtime payloads are not included in this repository.
+
+## Run
+
+```powershell
+python .\scripts\apply_codexpatched_public.py --sync-from-source
+```
+
+## Dry Run
+
+```powershell
+python .\scripts\apply_codexpatched_public.py --dry-run
+```
+
+## Goal Config
+
+The official app still owns Goal execution. Enable it in `%USERPROFILE%\.codex\config.toml`:
+
+```toml
+[features]
+goals = true
+```
+
+This patch removes only the renderer-side Statsig popup gate. It does not replace the official Goal route, editor, pause, delete, or trace behavior.
+
+## Legacy Public README
+
 
 Unofficial local patch bundle for the Codex desktop app. It fixes the `/goal` workflow, adds a project path retarget action for moved local folders, and repairs common patched-app `browser-use` wiring issues.
 
