@@ -12,6 +12,8 @@ Private runtime payloads are not included in this repository.
 
 Browser mini-window support is not enabled by default. The passive preview prototype is kept behind `--enable-browser-preview-window`, but it is not a Browser Use controlled session.
 
+Reddit posting text is staged in [REDDIT_DRAFT.md](REDDIT_DRAFT.md). Review it before opening Reddit's final submit flow.
+
 ## Run
 
 ```powershell
