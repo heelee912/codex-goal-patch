@@ -104,6 +104,14 @@ def parse_args() -> argparse.Namespace:
         help="Move any existing patched app aside, copy the official app into --app-dir, then patch the copy.",
     )
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--enable-browser-preview-window",
+        action="store_true",
+        help=(
+            "Experimental: add a passive URL preview mini window. This is not a Browser Use "
+            "controlled session and is intentionally disabled by default."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -444,21 +452,21 @@ def main() -> None:
     backup_dir = target_app_dir / f"codexpatch-public-backup-{stamp}"
 
     data, header, _, _, data_start = read_asar_header(asar_path)
-    main_entry_path = find_single_entry(header, "main bundle", MAIN_ENTRY_PREFIX)
     composer_entry_path = find_single_entry(header, "composer bundle", COMPOSER_PREFIX)
-
-    main_payload = read_entry_content(data, data_start, find_entry(header, main_entry_path))
-    main_payload = patch_browser_mini_window_main(main_payload)
 
     composer_payload = read_entry_content(data, data_start, find_entry(header, composer_entry_path))
     composer_payload = patch_goal_slash_visibility(composer_payload)
     composer_payload = patch_plan_after_goal(composer_payload)
-    composer_payload = patch_browser_mini_window_composer(composer_payload)
 
-    replacements = {
-        main_entry_path: main_payload,
-        composer_entry_path: composer_payload,
-    }
+    replacements = {composer_entry_path: composer_payload}
+    main_entry_path = None
+    if args.enable_browser_preview_window:
+        main_entry_path = find_single_entry(header, "main bundle", MAIN_ENTRY_PREFIX)
+        main_payload = read_entry_content(data, data_start, find_entry(header, main_entry_path))
+        main_payload = patch_browser_mini_window_main(main_payload)
+        composer_payload = patch_browser_mini_window_composer(composer_payload)
+        replacements[main_entry_path] = main_payload
+        replacements[composer_entry_path] = composer_payload
 
     if args.dry_run:
         print("dry_run=true")

@@ -5,8 +5,10 @@
   "features": [
     "goal_slash_visibility",
     "plan_after_goal",
-    "browser_mini_window",
     "official_app_copy"
+  ],
+  "experimental_disabled_features": [
+    "browser_preview_window"
   ],
   "excluded_private_features": [
     "people_browser_client_hardlink",

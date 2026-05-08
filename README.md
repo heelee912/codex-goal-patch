@@ -6,10 +6,11 @@ This package starts from the latest installed official Codex app and patches onl
 
 - show the official `/goal` slash command in the composer popup when `[features] goals = true`
 - add `Set as Goal` to the plan implementation prompt
-- add an in-app browser address-bar button that opens the current browser page in a mini window
 - keep the Microsoft Store Codex app untouched by patching a separate `CodexPatched` copy
 
 Private runtime payloads are not included in this repository.
+
+Browser mini-window support is not enabled by default. The passive preview prototype is kept behind `--enable-browser-preview-window`, but it is not a Browser Use controlled session.
 
 ## Run
 
