@@ -6,49 +6,65 @@ This package starts from the latest installed official Codex app and patches onl
 
 - show the official `/goal` slash command in the composer popup when `[features] goals = true`
 - add `Set as Goal` to the plan implementation prompt
+- add **Change project folder** / **프로젝트 경로 변경** for moved local projects
+- add a route-aware Browser Use **Open in mini window** toolbar action
+- apply Browser Use route fallback and blocking `alert()` suppression
 - keep the Microsoft Store Codex app untouched by patching a separate `CodexPatched` copy
 
 Private runtime payloads are not included in this repository.
 
-Browser mini-window support is not enabled by default. The passive preview prototype is kept behind `--enable-browser-preview-window`, but it is not a Browser Use controlled session.
+The mini-window action is no longer the removed passive URL preview prototype. It opens a secondary Codex window on the current Codex route and asks that window to show the Browser Use panel.
+
+Profile mode is selectable and independent from public/private payloads. `--profile-mode shared` keeps the official Codex profile and sessions. `--profile-mode isolated` gives the patched copy its own app identity, `userData`, and `CODEX_HOME`, and avoids updater/system registration by default.
+For a separate canary app, pass a distinct `--app-dir`, `--isolated-app-name`, and `--isolated-app-user-model-id`.
 
 Reddit posting text is staged in [REDDIT_DRAFT.md](REDDIT_DRAFT.md). Review it before opening Reddit's final submit flow.
 
 ## Run
 
 ```powershell
-python .\scripts\apply_codexpatched_public.py --sync-from-source
+python .\scripts\apply_codexpatched_public.py --sync-from-source --profile-mode shared
+```
+
+Example isolated canary:
+
+```powershell
+python .\scripts\apply_codexpatched_public.py --sync-from-source --profile-mode isolated --isolated-app-name CodexPatchedCanary --isolated-app-user-model-id OpenAI.CodexPatchedCanary --app-dir "$env:LOCALAPPDATA\OpenAI\CodexPatchedCanary\app"
 ```
 
 ## Dry Run
 
 ```powershell
-python .\scripts\apply_codexpatched_public.py --dry-run
+python .\scripts\apply_codexpatched_public.py --dry-run --profile-mode shared
 ```
 
 ## Goal Config
 
-The official app still owns Goal execution. Enable it in `%USERPROFILE%\.codex\config.toml`:
+The official app still owns Goal execution. In shared mode, enable it in `%USERPROFILE%\.codex\config.toml`. In isolated mode, enable it in that app profile's `codex-home\config.toml`, for example `%APPDATA%\CodexPatchedCanary\codex-home\config.toml`:
 
 ```toml
 [features]
 goals = true
 ```
 
-This patch removes only the renderer-side Statsig popup gate. It does not replace the official Goal route, editor, pause, delete, or trace behavior.
+The patcher keeps this flag enabled in the selected Codex home. This patch accepts either the official host config value or the official feature-list response for the popup gate. It does not replace the official Goal route, editor, pause, delete, or trace behavior.
 
 ## Legacy Public README
 
 
-Unofficial local patch bundle for the Codex desktop app. It fixes the `/goal` workflow, adds a project path retarget action for moved local folders, and repairs common patched-app `browser-use` wiring issues.
+Unofficial local patch bundle for the Codex desktop app. It keeps Codex's official Goal runtime, makes the `/goal` workflow visible, adds a project path retarget action for moved local folders, and repairs common patched-app `browser-use` wiring issues.
 
 This repository does not include OpenAI binaries, `app.asar`, extracted application files, user profiles, tokens, or cache files. Users apply the patch to their own local Codex installation at their own risk.
 
 ## Latest Update
 
-The initial release added the missing desktop UI wiring for Codex goals: `/goal <objective>` appears in the local composer, calls Codex's persisted `thread/goal/set` API, and lets Codex's own goal runtime keep working until the goal is complete, paused, budget-limited, or stopped.
+This release rebases the patch on the current official Codex Desktop Goal implementation. `/goal <objective>` still uses Codex's persisted `thread/goal/set` API and lets Codex's own Goal runtime, editor, pause/delete controls, and trace UI do the work.
 
-This update keeps that real goal behavior and adds the install-time pieces needed on current Codex desktop builds: the installer enables `[features].goals = true` automatically in `%USERPROFILE%\.codex\config.toml`, preserves existing TOML sections, repairs stale local goal-runtime state, supports the current minified bundle names, and resumes the thread after setting the goal so Codex's continuation runtime starts even when the desktop view had not loaded the thread yet.
+The `/goal` popup gate now accepts either the official host config value or the official feature-list response, then still hides the command in cloud composer mode. That matters on current builds where `[features].goals = true` enables the command path but the popup can stay hidden because the renderer no longer receives `config.goals` in the old shape.
+
+The patcher now finds bundles by stable code markers instead of relying only on names like `index-*.js`. It also verifies the patched main, composer, app-main, and comment-preload bundles with JavaScript syntax checks during release testing. This does not make minified-bundle patching update-proof, but filename churn like the current `app-main-*` / `composer--*` layout is now handled.
+
+Browser Use now has a route-aware mini-window button in the browser toolbar. It opens a secondary Codex window on the same Codex route and asks that window to show the browser panel, instead of cloning the current URL into an unrelated passive Electron preview.
 
 The Plan Mode follow-up prompt now also has a **Set as Goal** option. It does not hardcode any objective: by default the completed plan itself becomes the Goal objective, and when the plan includes an explicit ``/goal ...`` draft the patched app extracts that objective instead. Normal **Yes, implement this plan** behavior is unchanged, and arbitrary freeform replies are not treated as Goal unless they are explicitly written as `/goal <objective>`.
 
@@ -66,7 +82,7 @@ When Codex itself updates, download the latest patch release again and run:
 
 `-Force` replaces the existing `CodexPatched` copy with a fresh copy of the current official app, then reapplies the latest cumulative patch. Your official Codex install remains untouched.
 
-Codex desktop updates can still break patch anchors because this project edits minified Electron bundles. The patch is designed to handle most small bundle-name and code-shape changes through multiple anchors and idempotent cleanup paths, but it intentionally fails closed when a required pattern cannot be matched exactly. A failed match means the patch script needs an update for that Codex build; do not force or hand-edit around it.
+Codex desktop updates can still break patch anchors because this project edits minified Electron bundles. The current patch uses marker-based bundle discovery and multiple known code-shape anchors for the Goal composer, project sidebar, Browser Use routing, and preload runtime. It intentionally fails closed when a required pattern cannot be matched exactly. A failed match means the patch script needs an update for that Codex build; do not force or hand-edit around it.
 
 Installer note: current releases repack `app.asar` to a new file and then replace the old archive. This matters because Electron's `asar pack` command can return success without overwriting an existing archive on some Windows/AppX copied files.
 
@@ -80,6 +96,7 @@ The screenshots show the important behaviors this patch is meant to provide:
 4. **Goal set confirmation**: after submitting `/goal <objective>`, the app shows **Goal set**, confirming that the thread goal was accepted.
 5. **Plan Mode Set as Goal choice**: a completed Plan Mode proposal shows **Set as Goal** beside the normal implementation choice.
 6. **Plan Mode Goal run**: after choosing **Set as Goal**, Codex starts the normal plan implementation path and the built-in Goal runtime performs the completion audit.
+7. **Browser mini window**: the browser toolbar includes **Open in mini window**, which opens a secondary Codex window on the current route and shows the Browser Use panel there.
 
 
 
@@ -162,6 +179,7 @@ When it finishes, launch:
 Use /goal your goal text in a loaded local Codex chat to set or replace the active thread goal. For anything nontrivial, write the goal in a separate note or editor first, then paste it after `/goal`; keeping that source copy makes the original objective easier to review after Codex finishes the goal run. Codex uses its built-in goal continuation runtime to start or continue work until the goal is marked complete, paused, budget-limited, or stopped. On the new-chat home screen, `/goal <objective>` queues that goal for the next local chat you start from the same project.
 After Plan Mode finishes a plan, you can choose **Set as Goal** instead of **Yes, implement this plan**. The patched app sets the completed plan as the Goal objective, starts implementation through Codex's normal plan-implementation path, and then lets the built-in Goal runtime continue/audit the work. If the plan contains a `/goal <objective>` draft, that explicit objective is used instead.
 If you moved a project folder, right-click that project in the sidebar and choose Change project folder / 프로젝트 경로 변경. Select the new folder location. This keeps the chat history and retargets the cwd/workspace path Codex uses.
+When Browser Use opens the in-app browser panel, use the mini-window button beside the external-browser button in the browser address toolbar to pop that browser route into a separate Codex window.
 
 If the installer cannot find Codex, find the official Codex.exe path and run the installer again with -SourceApp. For Store/AppX installs the path may look like:
 .\install_windows.ps1 -SourceApp "C:\Program Files\WindowsApps\OpenAI.Codex_26.429.3425.0_x64__2p2nqsd0c76g0\app\Codex.exe"
@@ -182,12 +200,13 @@ To install and launch the patched app in one step:
 ## What This Fixes
 
 - `/goal <objective>` can be entered from the composer.
+- The `/goal` slash command popup follows the official local Goal feature state without depending on the older renderer-only Statsig/config gate.
 - `/goal <objective>` in an existing loaded local thread sets the active thread goal through Codex's `thread/goal/set` API and lets the real goal runtime start/continue work automatically.
 - `/goal <objective>` appears on the new-chat home composer. If no thread exists yet, the goal is queued and applied to the next local chat created from that project.
 - Plan Mode's completed-plan prompt includes **Set as Goal** in addition to the normal implementation choice.
 - **Set as Goal** uses the completed plan as the Goal objective, extracts an explicit `/goal <objective>` from the plan when present, starts the normal plan implementation path, and lets Codex's built-in Goal runtime continue/audit the work.
 - Other/freeform Plan Mode replies remain normal user input unless the user explicitly types `/goal <objective>`.
-- The installer enables the local Codex `goals` feature flag in `%USERPROFILE%\.codex\config.toml`.
+- The patcher enables the local Codex `goals` feature flag in the selected Codex home.
 - The installer repairs stale local goal-runtime backfill state that can block Codex from opening its goal continuation database.
 - Setting a new goal first clears the previous thread goal, so a completed or stale goal does not block the next one.
 - Local project sidebar menu gets **Change project folder** / **프로젝트 경로 변경**.
@@ -195,6 +214,7 @@ To install and launch the patched app in one step:
 - Existing chats keep their session history while their saved `cwd` is updated to the new folder.
 - `browser-use` is configured to trust the patched app's bundled browser client when `node_repl` is launched from the patched copy.
 - `browser-use` can recover the registered conversation/window route when the app missed a per-turn IAB route capture.
+- The Browser Use toolbar gets **Open in mini window**, implemented as a route-aware Codex window rather than a raw URL clone.
 - During `browser-use` control, simple website `alert()` popups are suppressed so native OK-only dialogs do not block automation. `confirm()` and `prompt()` are left unchanged.
 - Electron ASAR integrity in `Codex.exe` can be updated after repacking `app.asar`.
 
@@ -220,7 +240,7 @@ The retarget action does not:
 Before writing changes, it creates a backup under:
 
 ```text
-%USERPROFILE%\.codex\backups\cwd-retarget-*
+<selected Codex home>\backups\cwd-retarget-*
 ```
 
 ## Important Notes
@@ -230,7 +250,7 @@ Before writing changes, it creates a backup under:
 - Do not publish or redistribute `Codex.exe`, `app.asar`, extracted app bundles, `.codex` profiles, auth files, logs, or caches.
 - The patched app is installed as a separate copy named `CodexPatched`. Your official Codex install remains available.
 - Latest releases are cumulative. Use the newest release ZIP only; do not apply old releases one by one.
-- Codex updates can change the minified bundle names and code patterns. If the script cannot find exactly one match, it stops instead of guessing.
+- Codex updates can change minified bundle code patterns. File-name changes are less fragile now because the patcher scans for stable markers, but if the script cannot find exactly one match, it stops instead of guessing.
 - Patch a copied app directory, not your only Codex install.
 - The project path action does not move folders on disk. It only updates Codex's saved workspace path for matching local chats.
 
@@ -396,7 +416,7 @@ For moved project folders:
 2. Right-click a local project in the sidebar.
 3. Click **Change project folder** or **프로젝트 경로 변경**.
 4. Select the folder's new location.
-5. The patch updates the sidebar project path, matching local thread cwd values, and session metadata. A backup is written under `%USERPROFILE%\.codex\backups\cwd-retarget-*`.
+5. The patch updates the sidebar project path, matching local thread cwd values, and session metadata. A backup is written under the selected Codex home's `backups\cwd-retarget-*` folder.
 
 This keeps the existing chats. It changes the workspace path those chats use. It does not delete sessions and does not move project files.
 
@@ -456,7 +476,7 @@ Make sure you launched the patched copy. The project path action only appears fo
 
 ### Project path change fails
 
-Check `%USERPROFILE%\.codex\backups` first. The retarget action backs up `state_5.sqlite`, its WAL/SHM sidecars when present, `.codex-global-state.json`, and affected rollout JSONL files before writing changes.
+Check the selected Codex home's `backups` folder first. The retarget action backs up `state_5.sqlite`, its WAL/SHM sidecars when present, `.codex-global-state.json`, and affected rollout JSONL files before writing changes.
 
 ### `%LOCALAPPDATA%\OpenAI` does not exist
 
@@ -490,7 +510,7 @@ Run:
 .\install_windows.ps1 -RepairBrowserUseOnly
 ```
 
-This rewrites `%USERPROFILE%\.codex\config.toml` so `node_repl` trusts the browser-use client shipped inside `%LOCALAPPDATA%\OpenAI\CodexPatched\app`. It does not stop running `node_repl.exe` processes by default, because doing that can interrupt active browser-use sessions.
+This rewrites the selected Codex home `config.toml` so `node_repl` trusts the browser-use client shipped inside `%LOCALAPPDATA%\OpenAI\CodexPatched\app`. It does not stop running `node_repl.exe` processes by default, because doing that can interrupt active browser-use sessions.
 
 If you are sure no active session is relying on browser-use and you want to clean stale patched `node_repl.exe` processes too, run:
 

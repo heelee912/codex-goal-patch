@@ -1,15 +1,35 @@
 {
-  "release": "2026-05-08-public",
+  "release": "2026-05-13-public",
   "source": "latest-installed-official-codex-app",
   "target": "C:/Users/USER/AppData/Local/OpenAI/CodexPatched/app",
+  "profile_modes": {
+    "shared": {
+      "shares_official_profile": true,
+      "features": []
+    },
+    "isolated": {
+      "shares_official_profile": false,
+      "default_app_name": "CodexPatched",
+      "default_app_user_model_id": "OpenAI.CodexPatched",
+      "canary_app_name": "CodexPatchedCanary",
+      "canary_app_user_model_id": "OpenAI.CodexPatchedCanary",
+      "features": [
+        "separate_app_identity",
+        "separate_user_data_and_codex_home",
+        "system_registration_isolation"
+      ]
+    }
+  },
   "features": [
     "goal_slash_visibility",
     "plan_after_goal",
+    "cwd_retarget",
+    "browser_use_route_fallback",
+    "browser_use_alert_shim",
+    "browser_route_mini_window",
     "official_app_copy"
   ],
-  "experimental_disabled_features": [
-    "browser_preview_window"
-  ],
+  "experimental_disabled_features": [],
   "excluded_private_features": [
     "people_browser_client_hardlink",
     "turn_completed_cyber_policy_normalization",

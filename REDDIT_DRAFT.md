@@ -3,7 +3,7 @@
 Suggested title:
 
 ```text
-Codex Desktop patch: /goal slash UI and Plan Mode "Set as Goal"
+Codex Desktop patch: /goal slash UI, Plan Mode "Set as Goal", cwd retarget, and Browser mini window
 ```
 
 Suggested subreddits:
@@ -23,14 +23,16 @@ https://github.com/heelee912/codex-desktop-patch
 
 What it does:
 
-- Shows the official `/goal` command in the slash-command popup when `[features] goals = true`
+- Shows the official `/goal` command in the slash-command popup when local Goal is enabled
 - Adds a Plan Mode follow-up option named `Set as Goal`
 - Uses Codex's official persisted thread goal route instead of inventing a separate goal system
+- Adds a project sidebar action to retarget moved local project folders
+- Adds a route-aware Browser Use mini-window button that opens a secondary Codex window on the current route
+- Adds Browser Use route fallback and simple `alert()` suppression during automation
 - Rebuilds a separate `%LOCALAPPDATA%\OpenAI\CodexPatched\app` copy from the currently installed official Codex app
 - Leaves the Microsoft Store Codex app untouched
-- Keeps the browser mini-window prototype disabled by default because a passive URL clone is not the same as the Browser Use controlled route
 
-The current release is intentionally conservative. The goal is to expose and smooth the official Goal path, not replace it.
+The current release is intentionally conservative around Goal. It exposes and smooths the official Goal path; it does not replace it.
 
 Install summary:
 
@@ -44,7 +46,7 @@ After install, launch:
 %LOCALAPPDATA%\OpenAI\CodexPatched\app\Codex.exe
 ```
 
-Then enable goals in Codex config if needed:
+The patcher enables goals in the selected Codex config:
 
 ```toml
 [features]
@@ -54,8 +56,8 @@ goals = true
 Known limitations:
 
 - This edits minified Electron bundles, so future Codex Desktop updates can break patch anchors.
+- The patcher now uses marker-based bundle discovery, so filename changes are less fragile, but code-shape changes can still require a patch update.
 - The patched app is a separate local copy, not an official OpenAI build.
-- The mini-window experiment is not enabled by default because it is not route-aware yet.
 - Private runtime payloads are not included in the public repo.
 
 This is for people who are already comfortable running local desktop patches and inspecting the code before installing.
